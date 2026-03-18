@@ -1,0 +1,372 @@
+/* Global Styles - Alfa Romeo Experience */
+:root {
+  /* Brand Colors */
+  --alfa-red: #C0392B;
+  --alfa-red-dark: #8B0000;
+  --alfa-red-light: #E74C3C;
+  --alfa-black: #0a0a0a;
+  --alfa-charcoal: #1a1a1a;
+  --alfa-silver: #C0C0C0;
+  --alfa-chrome: #E8E8E8;
+  --alfa-gold: #D4AF37;
+
+  /* UI Colors */
+  --text-primary: #ffffff;
+  --text-secondary: rgba(255, 255, 255, 0.7);
+  --text-muted: rgba(255, 255, 255, 0.5);
+
+  /* DNA Mode Colors */
+  --dna-dynamic: #C0392B;
+  --dna-natural: #ffffff;
+  --dna-efficient: #27ae60;
+  --dna-race: #ff0000;
+
+  /* Typography */
+  --font-heading: 'Orbitron', sans-serif;
+  --font-body: 'Rajdhani', sans-serif;
+  --font-accent: 'Exo 2', sans-serif;
+
+  /* Spacing */
+  --section-height: 150vh;
+  --content-padding: 5vw;
+
+  /* Transitions */
+  --transition-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+
+  /* Carbon fiber pattern as reusable custom properties */
+  --carbon-fiber-bg:
+    repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 2px,
+      rgba(255, 255, 255, 0.015) 2px,
+      rgba(255, 255, 255, 0.015) 4px
+    ),
+    repeating-linear-gradient(
+      -45deg,
+      transparent,
+      transparent 2px,
+      rgba(255, 255, 255, 0.015) 2px,
+      rgba(255, 255, 255, 0.015) 4px
+    );
+
+  --carbon-fiber-bg-strong:
+    repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 2px,
+      rgba(255, 255, 255, 0.03) 2px,
+      rgba(255, 255, 255, 0.03) 4px
+    ),
+    repeating-linear-gradient(
+      -45deg,
+      transparent,
+      transparent 2px,
+      rgba(255, 255, 255, 0.03) 2px,
+      rgba(255, 255, 255, 0.03) 4px
+    );
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-body);
+  background-color: var(--alfa-black);
+  color: var(--text-primary);
+  overflow-x: hidden;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Typography */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+h1 {
+  font-size: clamp(2.5rem, 8vw, 6rem);
+  line-height: 1.1;
+}
+
+h2 {
+  font-size: clamp(1.8rem, 5vw, 3.5rem);
+  line-height: 1.2;
+}
+
+h3 {
+  font-size: clamp(1.2rem, 3vw, 2rem);
+}
+
+p {
+  font-family: var(--font-body);
+  font-size: clamp(1rem, 1.5vw, 1.25rem);
+  font-weight: 400;
+}
+
+/* Utility Classes */
+.accent-text {
+  color: var(--alfa-red);
+}
+
+.silver-text {
+  color: var(--alfa-silver);
+}
+
+.gold-text {
+  color: var(--alfa-gold);
+}
+
+/* Carbon Fiber utility class */
+.carbon-fiber {
+  position: relative;
+}
+
+.carbon-fiber::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: var(--carbon-fiber-bg);
+  pointer-events: none;
+  z-index: 0;
+  border-radius: inherit;
+}
+
+.carbon-fiber-strong {
+  position: relative;
+}
+
+.carbon-fiber-strong::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: var(--carbon-fiber-bg-strong);
+  pointer-events: none;
+  z-index: 0;
+  border-radius: inherit;
+}
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--alfa-black);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--alfa-red-dark);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--alfa-red);
+}
+
+/* Selection */
+::selection {
+  background: var(--alfa-red);
+  color: var(--text-primary);
+}
+
+/* Canvas Container */
+.canvas-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.canvas-container canvas {
+  pointer-events: auto;
+}
+
+/* Sections Container */
+.sections-container {
+  position: relative;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.sections-container > section {
+  pointer-events: auto;
+}
+
+/* Section Base Styles */
+.section {
+  min-height: var(--section-height);
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding: var(--content-padding);
+}
+
+/* Content Panels - now with carbon fiber */
+.content-panel {
+  background: linear-gradient(
+    135deg,
+    rgba(26, 26, 26, 0.9) 0%,
+    rgba(10, 10, 10, 0.95) 100%
+  );
+  border: 1px solid rgba(192, 57, 43, 0.3);
+  border-radius: 8px;
+  padding: 2rem;
+  backdrop-filter: blur(10px);
+  box-shadow:
+    0 4px 30px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  position: relative;
+  overflow: hidden;
+}
+
+.content-panel::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: var(--carbon-fiber-bg);
+  pointer-events: none;
+  z-index: 0;
+  border-radius: inherit;
+}
+
+.content-panel > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Spec List */
+.spec-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.spec-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.spec-item:last-child {
+  border-bottom: none;
+}
+
+.spec-label {
+  font-family: var(--font-body);
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.spec-value {
+  font-family: var(--font-heading);
+  color: var(--text-primary);
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+/* Buttons */
+.btn-primary {
+  font-family: var(--font-heading);
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 1rem 2.5rem;
+  background: linear-gradient(180deg, var(--alfa-red) 0%, var(--alfa-red-dark) 100%);
+  color: var(--text-primary);
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.3s var(--transition-smooth);
+  box-shadow:
+    0 4px 15px rgba(192, 57, 43, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 6px 25px rgba(192, 57, 43, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.btn-primary:active {
+  transform: translateY(0);
+}
+
+/* Loading Screen */
+.loading-screen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: var(--alfa-black);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes glow {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(192, 57, 43, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 40px rgba(192, 57, 43, 0.8);
+  }
+}
+
+/* Mobile Adjustments */
+@media (max-width: 768px) {
+  :root {
+    --section-height: 100vh;
+    --content-padding: 1.5rem;
+  }
+
+  .content-panel {
+    padding: 1.5rem;
+  }
+}

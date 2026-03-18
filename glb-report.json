@@ -1,0 +1,1233 @@
+{
+  "counts": {
+    "materials": 25,
+    "textures": 29,
+    "images": 29,
+    "meshes": 41,
+    "nodes": 96
+  },
+  "materials": [
+    {
+      "index": 0,
+      "name": "QuadrifoglioAlfaRomeo_GiuliaQuadrifoglio_2017_Wheel1A_3D_3DWheel1A_Material1",
+      "alphaMode": "OPAQUE",
+      "doubleSided": true,
+      "baseColorTex": {
+        "textureIndex": 0,
+        "source": 0,
+        "imageName": null,
+        "uri": null,
+        "mimeType": "image/png",
+        "bufferView": 5
+      },
+      "metalRoughTex": null,
+      "normalTex": {
+        "textureIndex": 1,
+        "source": 1,
+        "imageName": null,
+        "uri": null,
+        "mimeType": "image/png",
+        "bufferView": 6
+      },
+      "occlusionTex": null,
+      "emissiveTex": null,
+      "emissiveFactor": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "index": 1,
+      "name": "QuadrifoglioAlfaRomeo_GiuliaQuadrifoglio_2017CalliperBadgeA_Material1",
+      "alphaMode": "BLEND",
+      "doubleSided": true,
+      "baseColorTex": {
+        "textureIndex": 2,
+        "source": 2,
+        "imageName": null,
+        "uri": null,
+        "mimeType": "image/png",
+        "bufferView": 7
+      },
+      "metalRoughTex": null,
+      "normalTex": null,
+      "occlusionTex": null,
+      "emissiveTex": null,
+      "emissiveFactor": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "index": 2,
+      "name": "phong5",
+      "alphaMode": "OPAQUE",
+      "doubleSided": true,
+      "baseColorTex": null,
+      "metalRoughTex": null,
+      "normalTex": null,
+      "occlusionTex": null,
+      "emissiveTex": null,
+      "emissiveFactor": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "index": 3,
+      "name": "QuadrifoglioAlfaRomeo_GiuliaQuadrifoglio_2017CalliperGloss_Material1",
+      "alphaMode": "OPAQUE",
+      "doubleSided": true,
+      "baseColorTex": null,
+      "metalRoughTex": null,
+      "normalTex": {
+        "textureIndex": 3,
+        "source": 3,
+        "imageName": null,
+        "uri": null,
+        "mimeType": "image/png",
+        "bufferView": 8
+      },
+      "occlusionTex": null,
+      "emissiveTex": null,
+      "emissiveFactor": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "index": 4,
+      "name": "QuadrifoglioAlfaRomeo_GiuliaQuadrifoglio_2017Carbon1_Material1",
+      "alphaMode": "OPAQUE",
+      "doubleSided": true,
+      "baseColorTex": {
+        "textureIndex": 4,
+        "source": 4,
+        "imageName": null,
+        "uri": null,
+        "mimeType": "image/png",
+        "bufferView": 9
+      },
+      "metalRoughTex": null,
+      "normalTex": null,
+      "occlusionTex": null,
+      "emissiveTex": null,
+      "emissiveFactor": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "index": 5,
+      "name": "QuadrifoglioAlfaRomeo_GiuliaQuadrifoglio_2017Grille2A_Material1",
+      "alphaMode": "BLEND",
+      "doubleSided": true,
+      "baseColorTex": {
+        "textureIndex": 5,
+        "source": 5,
+        "imageName": null,
+        "uri": null,
+        "mimeType": "image/png",
+        "bufferView": 10
+      },
+      "metalRoughTex": null,
+      "normalTex": {
+        "textureIndex": 6,
+        "source": 6,
+        "imageName": null,
+        "uri": null,
+        "mimeType": "image/png",
+        "bufferView": 11
+      },
+      "occlusionTex": null,
+      "emissiveTex": null,
+      "emissiveFactor": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "index": 6,
+      "name": "QuadrifoglioAlfaRomeo_GiuliaQuadrifoglio_2017Coloured_Material1",
+      "alphaMode": "OPAQUE",
+      "doubleSided": true,
+      "baseColorTex": {
+        "textureIndex": 7,
+        "source": 7,
+        "imageName": null,
+        "uri": null,
+        "mimeType": "image/png",
+        "bufferView": 12
+      },
+      "metalRoughTex": null,
+      "normalTex": null,
+      "occlusionTex": null,
+      "emissiveTex": null,
+      "emissiveFactor": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "index": 7,
+      "name": "QuadrifoglioAlfaRomeo_GiuliaQuadrifoglio_2017Window_Material1",
+      "alphaMode": "BLEND",
+      "doubleSided": true,
+      "baseColorTex": null,
+      "metalRoughTex": null,
+      "normalTex": null,
+      "occlusionTex": null,
+      "emissiveTex": null,
+      "emissiveFactor": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "index": 8,
+      "name": "orange_glass",
+      "alphaMode": "BLEND",
+      "doubleSided": true,
+      "baseColorTex": null,
+      "metalRoughTex": null,
+      "normalTex": null,
+      "occlusionTex": null,
+      "emissiveTex": null,
+      "emissiveFactor": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "index": 9,
+      "name": "QuadrifoglioAlfaRomeo_GiuliaQuadrifoglio_2017Paint_Material1",
+      "alphaMode": "OPAQUE",
+      "doubleSided": true,
+      "baseColorTex": null,
+      "metalRoughTex": null,
+      "normalTex": null,
+      "occlusionTex": null,
+      "emissiveTex": null,
+      "emissiveFactor": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "index": 10,
+      "name": "QuadrifoglioAlfaRomeo_GiuliaQuadrifoglio_2017Grille3A_Material1",
+      "alphaMode": "BLEND",
+      "doubleSided": true,
+      "baseColorTex": {
+        "textureIndex": 8,
+        "source": 8,
+        "imageName": null,
+        "uri": null,
+        "mimeType": "image/png",
+        "bufferView": 13
+      },
+      "metalRoughTex": null,
+      "normalTex": {
+        "textureIndex": 9,
+        "source": 9,
+        "imageName": null,
+        "uri": null,
+        "mimeType": "image/png",
+        "bufferView": 14
+      },
+      "occlusionTex": null,
+      "emissiveTex": null,
+      "emissiveFactor": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "index": 11,
+      "name": "QuadrifoglioAlfaRomeo_GiuliaQuadrifoglio_2017Grille6A_Material1",
+      "alphaMode": "OPAQUE",
+      "doubleSided": true,
+      "baseColorTex": {
+        "textureIndex": 10,
+        "source": 10,
+        "imageName": null,
+        "uri": null,
+        "mimeType": "image/png",
+        "bufferView": 15
+      },
+      "metalRoughTex": null,
+      "normalTex": {
+        "textureIndex": 11,
+        "source": 11,
+        "imageName": null,
+        "uri": null,
+        "mimeType": "image/png",
+        "bufferView": 16
+      },
+      "occlusionTex": null,
+      "emissiveTex": null,
+      "emissiveFactor": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "index": 12,
+      "name": "QuadrifoglioAlfaRomeo_GiuliaQuadrifoglio_2017BadgeA_Material1",
+      "alphaMode": "BLEND",
+      "doubleSided": true,
+      "baseColorTex": {
+        "textureIndex": 12,
+        "source": 12,
+        "imageName": null,
+        "uri": null,
+        "mimeType": "image/png",
+        "bufferView": 17
+      },
+      "metalRoughTex": null,
+      "normalTex": {
+        "textureIndex": 13,
+        "source": 13,
+        "imageName": null,
+        "uri": null,
+        "mimeType": "image/png",
+        "bufferView": 18
+      },
+      "occlusionTex": null,
+      "emissiveTex": null,
+      "emissiveFactor": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "index": 13,
+      "name": "QuadrifoglioAlfaRomeo_GiuliaQuadrifoglio_2017EngineA_Material1",
+      "alphaMode": "BLEND",
+      "doubleSided": true,
+      "baseColorTex": {
+        "textureIndex": 14,
+        "source": 14,
+        "imageName": null,
+        "uri": null,
+        "mimeType": "image/png",
+        "bufferView": 19
+      },
+      "metalRoughTex": null,
+      "normalTex": {
+        "textureIndex": 15,
+        "source": 15,
+        "imageName": null,
+        "uri": null,
+        "mimeType": "image/png",
+        "bufferView": 20
+      },
+      "occlusionTex": null,
+      "emissiveTex": null,
+      "emissiveFactor": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "index": 14,
+      "name": "light_glass",
+      "alphaMode": "BLEND",
+      "doubleSided": true,
+      "baseColorTex": null,
+      "metalRoughTex": null,
+      "normalTex": null,
+      "occlusionTex": null,
+      "emissiveTex": null,
+      "emissiveFactor": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "index": 15,
+      "name": "red_glass",
+      "alphaMode": "BLEND",
+      "doubleSided": true,
+      "baseColorTex": null,
+      "metalRoughTex": null,
+      "normalTex": null,
+      "occlusionTex": null,
+      "emissiveTex": null,
+      "emissiveFactor": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "index": 16,
+      "name": "QuadrifoglioAlfaRomeo_GiuliaQuadrifoglio_2017Grille4A_Material1",
+      "alphaMode": "OPAQUE",
+      "doubleSided": true,
+      "baseColorTex": {
+        "textureIndex": 16,
+        "source": 16,
+        "imageName": null,
+        "uri": null,
+        "mimeType": "image/png",
+        "bufferView": 21
+      },
+      "metalRoughTex": null,
+      "normalTex": {
+        "textureIndex": 17,
+        "source": 17,
+        "imageName": null,
+        "uri": null,
+        "mimeType": "image/png",
+        "bufferView": 22
+      },
+      "occlusionTex": null,
+      "emissiveTex": null,
+      "emissiveFactor": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "index": 17,
+      "name": "QuadrifoglioAlfaRomeo_GiuliaQuadrifoglio_2017ManufacturerPlateA_Material1",
+      "alphaMode": "OPAQUE",
+      "doubleSided": true,
+      "baseColorTex": {
+        "textureIndex": 18,
+        "source": 18,
+        "imageName": null,
+        "uri": null,
+        "mimeType": "image/png",
+        "bufferView": 23
+      },
+      "metalRoughTex": null,
+      "normalTex": null,
+      "occlusionTex": null,
+      "emissiveTex": null,
+      "emissiveFactor": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "index": 18,
+      "name": "QuadrifoglioAlfaRomeo_GiuliaQuadrifoglio_2017Base_Material1",
+      "alphaMode": "OPAQUE",
+      "doubleSided": true,
+      "baseColorTex": null,
+      "metalRoughTex": null,
+      "normalTex": null,
+      "occlusionTex": null,
+      "emissiveTex": null,
+      "emissiveFactor": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "index": 19,
+      "name": "QuadrifoglioAlfaRomeo_GiuliaQuadrifoglio_2017Grille1A_Material1",
+      "alphaMode": "BLEND",
+      "doubleSided": true,
+      "baseColorTex": {
+        "textureIndex": 19,
+        "source": 19,
+        "imageName": null,
+        "uri": null,
+        "mimeType": "image/png",
+        "bufferView": 24
+      },
+      "metalRoughTex": null,
+      "normalTex": {
+        "textureIndex": 20,
+        "source": 20,
+        "imageName": null,
+        "uri": null,
+        "mimeType": "image/png",
+        "bufferView": 25
+      },
+      "occlusionTex": null,
+      "emissiveTex": null,
+      "emissiveFactor": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "index": 20,
+      "name": "QuadrifoglioAlfaRomeo_GiuliaQuadrifoglio_2017Grille5A_Material1",
+      "alphaMode": "OPAQUE",
+      "doubleSided": true,
+      "baseColorTex": {
+        "textureIndex": 21,
+        "source": 21,
+        "imageName": null,
+        "uri": null,
+        "mimeType": "image/png",
+        "bufferView": 26
+      },
+      "metalRoughTex": null,
+      "normalTex": {
+        "textureIndex": 22,
+        "source": 22,
+        "imageName": null,
+        "uri": null,
+        "mimeType": "image/png",
+        "bufferView": 27
+      },
+      "occlusionTex": null,
+      "emissiveTex": null,
+      "emissiveFactor": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "index": 21,
+      "name": "QuadrifoglioAlfaRomeo_GiuliaQuadrifoglio_2017InteriorA_Material1",
+      "alphaMode": "BLEND",
+      "doubleSided": true,
+      "baseColorTex": {
+        "textureIndex": 23,
+        "source": 23,
+        "imageName": null,
+        "uri": null,
+        "mimeType": "image/png",
+        "bufferView": 28
+      },
+      "metalRoughTex": null,
+      "normalTex": {
+        "textureIndex": 24,
+        "source": 24,
+        "imageName": null,
+        "uri": null,
+        "mimeType": "image/png",
+        "bufferView": 29
+      },
+      "occlusionTex": null,
+      "emissiveTex": null,
+      "emissiveFactor": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "index": 22,
+      "name": "color_Int",
+      "alphaMode": "BLEND",
+      "doubleSided": true,
+      "baseColorTex": {
+        "textureIndex": 25,
+        "source": 25,
+        "imageName": null,
+        "uri": null,
+        "mimeType": "image/png",
+        "bufferView": 30
+      },
+      "metalRoughTex": null,
+      "normalTex": {
+        "textureIndex": 24,
+        "source": 24,
+        "imageName": null,
+        "uri": null,
+        "mimeType": "image/png",
+        "bufferView": 29
+      },
+      "occlusionTex": null,
+      "emissiveTex": null,
+      "emissiveFactor": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "index": 23,
+      "name": "emiss",
+      "alphaMode": "OPAQUE",
+      "doubleSided": true,
+      "baseColorTex": {
+        "textureIndex": 26,
+        "source": 26,
+        "imageName": null,
+        "uri": null,
+        "mimeType": "image/png",
+        "bufferView": 31
+      },
+      "metalRoughTex": null,
+      "normalTex": null,
+      "occlusionTex": null,
+      "emissiveTex": {
+        "textureIndex": 27,
+        "source": 27,
+        "imageName": null,
+        "uri": null,
+        "mimeType": "image/png",
+        "bufferView": 32
+      },
+      "emissiveFactor": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "index": 24,
+      "name": "QuadrifoglioAlfaRomeo_GiuliaQuadrifoglio_2017LightA_Material1",
+      "alphaMode": "OPAQUE",
+      "doubleSided": true,
+      "baseColorTex": {
+        "textureIndex": 28,
+        "source": 28,
+        "imageName": null,
+        "uri": null,
+        "mimeType": "image/png",
+        "bufferView": 33
+      },
+      "metalRoughTex": null,
+      "normalTex": null,
+      "occlusionTex": null,
+      "emissiveTex": null,
+      "emissiveFactor": [
+        0,
+        0,
+        0
+      ]
+    }
+  ],
+  "materialUsage": {
+    "0": [
+      {
+        "node": "polySurface1_Quadrifoglio:AlfaRomeo_GiuliaQuadrifoglio_2017_Wheel1A_3D_3DWheel1A_Material1_0",
+        "nodeIndex": 8,
+        "mesh": "polySurface1_Quadrifoglio:AlfaRomeo_GiuliaQuadrifoglio_2017_Wheel1A_3D_3DWheel1A_Material1_0",
+        "meshIndex": 0,
+        "primitive": 0
+      },
+      {
+        "node": "polySurface113_Quadrifoglio:AlfaRomeo_GiuliaQuadrifoglio_2017_Wheel1A_3D_3DWheel1A_Material1_0",
+        "nodeIndex": 11,
+        "mesh": "polySurface113_Quadrifoglio:AlfaRomeo_GiuliaQuadrifoglio_2017_Wheel1A_3D_3DWheel1A_Material1_0",
+        "meshIndex": 1,
+        "primitive": 0
+      },
+      {
+        "node": "polySurface225_Quadrifoglio:AlfaRomeo_GiuliaQuadrifoglio_2017_Wheel1A_3D_3DWheel1A_Material1_0",
+        "nodeIndex": 14,
+        "mesh": "polySurface225_Quadrifoglio:AlfaRomeo_GiuliaQuadrifoglio_2017_Wheel1A_3D_3DWheel1A_Material1_0",
+        "meshIndex": 2,
+        "primitive": 0
+      },
+      {
+        "node": "polySurface337_Quadrifoglio:AlfaRomeo_GiuliaQuadrifoglio_2017_Wheel1A_3D_3DWheel1A_Material1_0",
+        "nodeIndex": 17,
+        "mesh": "polySurface337_Quadrifoglio:AlfaRomeo_GiuliaQuadrifoglio_2017_Wheel1A_3D_3DWheel1A_Material1_0",
+        "meshIndex": 3,
+        "primitive": 0
+      }
+    ],
+    "1": [
+      {
+        "node": "polySurface410_______Quadrifoglio:AlfaRomeo_GiuliaQuadrifoglio_2017CalliperBadgeA_Material1_0",
+        "nodeIndex": 23,
+        "mesh": "polySurface410_______Quadrifoglio:AlfaRomeo_GiuliaQuadrifoglio_2017CalliperBadgeA_Material1_0",
+        "meshIndex": 4,
+        "primitive": 0
+      },
+      {
+        "node": "polySurface411_Quadrifoglio:AlfaRomeo_GiuliaQuadrifoglio_2017CalliperBadgeA_Material1_0",
+        "nodeIndex": 31,
+        "mesh": "polySurface411_Quadrifoglio:AlfaRomeo_GiuliaQuadrifoglio_2017CalliperBadgeA_Material1_0",
+        "meshIndex": 7,
+        "primitive": 0
+      },
+      {
+        "node": "polySurface412_Quadrifoglio:AlfaRomeo_GiuliaQuadrifoglio_2017CalliperBadgeA_Material1_0",
+        "nodeIndex": 39,
+        "mesh": "polySurface412_Quadrifoglio:AlfaRomeo_GiuliaQuadrifoglio_2017CalliperBadgeA_Material1_0",
+        "meshIndex": 10,
+        "primitive": 0
+      },
+      {
+        "node": "polySurface413_Quadrifoglio:AlfaRomeo_GiuliaQuadrifoglio_2017CalliperBadgeA_Material1_0",
+        "nodeIndex": 49,
+        "mesh": "polySurface413_Quadrifoglio:AlfaRomeo_GiuliaQuadrifoglio_2017CalliperBadgeA_Material1_0",
+        "meshIndex": 14,
+        "primitive": 0
+      }
+    ],
+    "2": [
+      {
+        "node": "polySurface338_phong5_0",
+        "nodeIndex": 25,
+        "mesh": "polySurface338_phong5_0",
+        "meshIndex": 5,
+        "primitive": 0
+      },
+      {
+        "node": "polySurface361_phong5_0",
+        "nodeIndex": 33,
+        "mesh": "polySurface361_phong5_0",
+        "meshIndex": 8,
+        "primitive": 0
+      },
+      {
+        "node": "polySurface384_phong5_0",
+        "nodeIndex": 41,
+        "mesh": "polySurface384_phong5_0",
+        "meshIndex": 11,
+        "primitive": 0
+      },
+      {
+        "node": "Quadrifoglio:CalliperParkingRearL_CalliperParkingRearL_AlfaRomeo_GiuliaQuadrifoglio_2017CalliperGloss_Material_phong5_0",
+        "nodeIndex": 44,
+        "mesh": "Quadrifoglio:CalliperParkingRearL_CalliperParkingRearL_AlfaRomeo_GiuliaQuadrifoglio_2017CalliperGloss_Material_phong5_0",
+        "meshIndex": 13,
+        "primitive": 0
+      },
+      {
+        "node": "polySurface409_phong5_0",
+        "nodeIndex": 51,
+        "mesh": "polySurface409_phong5_0",
+        "meshIndex": 15,
+        "primitive": 0
+      },
+      {
+        "node": "Quadrifoglio:CalliperParkingRearR_CalliperParkingRearR_AlfaRomeo_GiuliaQuadrifoglio_2017CalliperGloss_Material_phong5_0",
+        "nodeIndex": 54,
+        "mesh": "Quadrifoglio:CalliperParkingRearR_CalliperParkingRearR_AlfaRomeo_GiuliaQuadrifoglio_2017CalliperGloss_Material_phong5_0",
+        "meshIndex": 17,
+        "primitive": 0
+      }
+    ],
+    "3": [
+      {
+        "node": "polySurface338_Quadrifoglio:AlfaRomeo_GiuliaQuadrifoglio_2017CalliperGloss_Material1_0",
+        "nodeIndex": 26,
+        "mesh": "polySurface338_Quadrifoglio:AlfaRomeo_GiuliaQuadrifoglio_2017CalliperGloss_Material1_0",
+        "meshIndex": 6,
+        "primitive": 0
+      },
+      {
+        "node": "polySurface361_Quadrifoglio:AlfaRomeo_GiuliaQuadrifoglio_2017CalliperGloss_Material1_0",
+        "nodeIndex": 34,
+        "mesh": "polySurface361_Quadrifoglio:AlfaRomeo_GiuliaQuadrifoglio_2017CalliperGloss_Material1_0",
+        "meshIndex": 9,
+        "primitive": 0
+      },
+      {
+        "node": "polySurface384_Quadrifoglio:AlfaRomeo_GiuliaQuadrifoglio_2017CalliperGloss_Material1_0",
+        "nodeIndex": 42,
+        "mesh": "polySurface384_Quadrifoglio:AlfaRomeo_GiuliaQuadrifoglio_2017CalliperGloss_Material1_0",
+        "meshIndex": 12,
+        "primitive": 0
+      },
+      {
+        "node": "polySurface409_Quadrifoglio:AlfaRomeo_GiuliaQuadrifoglio_2017CalliperGloss_Material1_0",
+        "nodeIndex": 52,
+        "mesh": "polySurface409_Quadrifoglio:AlfaRomeo_GiuliaQuadrifoglio_2017CalliperGloss_Material1_0",
+        "meshIndex": 16,
+        "primitive": 0
+      }
+    ],
+    "4": [
+      {
+        "node": "Quadrifoglio:Carbon1_Geo_lodA_Carbon1_Geo_lodA_AlfaRomeo_GiuliaQuadrifoglio_2017Carbon1_Material_Quadrifoglio:AlfaRomeo_GiuliaQuadrifoglio_2017Carbon1_Material1_0",
+        "nodeIndex": 56,
+        "mesh": "Quadrifoglio:Carbon1_Geo_lodA_Carbon1_Geo_lodA_AlfaRomeo_GiuliaQuadrifoglio_2017Carbon1_Material_Quadrifoglio:AlfaRomeo_GiuliaQuadrifoglio_2017Carbon1_Material1_0",
+        "meshIndex": 18,
+        "primitive": 0
+      }
+    ],
+    "5": [
+      {
+        "node": "Quadrifoglio:Grille2_Geo_lodA_Grille2_Geo_lodA_AlfaRomeo_GiuliaQuadrifoglio_2017Grille2A_Material_Quadrifoglio:AlfaRomeo_GiuliaQuadrifoglio_2017Grille2A_Material1_0",
+        "nodeIndex": 58,
+        "mesh": "Quadrifoglio:Grille2_Geo_lodA_Grille2_Geo_lodA_AlfaRomeo_GiuliaQuadrifoglio_2017Grille2A_Material_Quadrifoglio:AlfaRomeo_GiuliaQuadrifoglio_2017Grille2A_Material1_0",
+        "meshIndex": 19,
+        "primitive": 0
+      }
+    ],
+    "6": [
+      {
+        "node": "Quadrifoglio:SeatBelt_Geo_lodA_SeatBelt_Geo_lodA_AlfaRomeo_GiuliaQuadrifoglio_2017SeatBelt_Material_Quadrifoglio:AlfaRomeo_GiuliaQuadrifoglio_2017Coloured_Material1_0",
+        "nodeIndex": 60,
+        "mesh": "Quadrifoglio:SeatBelt_Geo_lodA_SeatBelt_Geo_lodA_AlfaRomeo_GiuliaQuadrifoglio_2017SeatBelt_Material_Quadrifoglio:AlfaRomeo_GiuliaQuadrifoglio_2017Coloured_Material1_0",
+        "meshIndex": 20,
+        "primitive": 0
+      },
+      {
+        "node": "Quadrifoglio:Coloured_Geo_lodA_Coloured_Geo_lodA_AlfaRomeo_GiuliaQuadrifoglio_2017Coloured_Material_Quadrifoglio:AlfaRomeo_GiuliaQuadrifoglio_2017Coloured_Material1_0",
+        "nodeIndex": 67,
+        "mesh": "Quadrifoglio:Coloured_Geo_lodA_Coloured_Geo_lodA_AlfaRomeo_GiuliaQuadrifoglio_2017Coloured_Material_Quadrifoglio:AlfaRomeo_GiuliaQuadrifoglio_2017Coloured_Material1_0",
+        "meshIndex": 24,
+        "primitive": 0
+      }
+    ],
+    "7": [
+      {
+        "node": "Quadrifoglio:WindowInside_Geo_lodA_WindowInside_Geo_lodA_AlfaRomeo_GiuliaQuadrifoglio_2017WindowInside_Material_Quadrifoglio:AlfaRomeo_GiuliaQuadrifoglio_2017Window_Material1_0",
+        "nodeIndex": 62,
+        "mesh": "Quadrifoglio:WindowInside_Geo_lodA_WindowInside_Geo_lodA_AlfaRomeo_GiuliaQuadrifoglio_2017WindowInside_Material_Quadrifoglio:AlfaRomeo_GiuliaQuadrifoglio_2017Window_Material1_0",
+        "meshIndex": 21,
+        "primitive": 0
+      },
+      {
+        "node": "Quadrifoglio:Window_Geo_lodA_Window_Geo_lodA_AlfaRomeo_GiuliaQuadrifoglio_2017Window_Material_Quadrifoglio:AlfaRomeo_GiuliaQuadrifoglio_2017Window_Material1_0",
+        "nodeIndex": 77,
+        "mesh": "Quadrifoglio:Window_Geo_lodA_Window_Geo_lodA_AlfaRomeo_GiuliaQuadrifoglio_2017Window_Material_Quadrifoglio:AlfaRomeo_GiuliaQuadrifoglio_2017Window_Material1_0",
+        "meshIndex": 29,
+        "primitive": 0
+      }
+    ],
+    "8": [
+      {
+        "node": "Quadrifoglio:WindowInside_Geo_lodA_WindowInside_Geo_lodA_AlfaRomeo_GiuliaQuadrifoglio_2017WindowInside_Material_orange_glass_0",
+        "nodeIndex": 63,
+        "mesh": "Quadrifoglio:WindowInside_Geo_lodA_WindowInside_Geo_lodA_AlfaRomeo_GiuliaQuadrifoglio_2017WindowInside_Material_orange_glass_0",
+        "meshIndex": 22,
+        "primitive": 0
+      }
+    ],
+    "9": [
+      {
+        "node": "Quadrifoglio:Paint_Geo_lodA_Paint_Geo_lodA_AlfaRomeo_GiuliaQuadrifoglio_2017Paint_Material_Quadrifoglio:AlfaRomeo_GiuliaQuadrifoglio_2017Paint_Material1_0",
+        "nodeIndex": 65,
+        "mesh": "Quadrifoglio:Paint_Geo_lodA_Paint_Geo_lodA_AlfaRomeo_GiuliaQuadrifoglio_2017Paint_Material_Quadrifoglio:AlfaRomeo_GiuliaQuadrifoglio_2017Paint_Material1_0",
+        "meshIndex": 23,
+        "primitive": 0
+      }
+    ],
+    "10": [
+      {
+        "node": "Quadrifoglio:Grille3_Geo_lodA_Grille3_Geo_lodA_AlfaRomeo_GiuliaQuadrifoglio_2017Grille3A_Material_Quadrifoglio:AlfaRomeo_GiuliaQuadrifoglio_2017Grille3A_Material1_0",
+        "nodeIndex": 69,
+        "mesh": "Quadrifoglio:Grille3_Geo_lodA_Grille3_Geo_lodA_AlfaRomeo_GiuliaQuadrifoglio_2017Grille3A_Material_Quadrifoglio:AlfaRomeo_GiuliaQuadrifoglio_2017Grille3A_Material1_0",
+        "meshIndex": 25,
+        "primitive": 0
+      }
+    ],
+    "11": [
+      {
+        "node": "Quadrifoglio:Grille6_Geo_lodA_Grille6_Geo_lodA_AlfaRomeo_GiuliaQuadrifoglio_2017Grille6A_Material_Quadrifoglio:AlfaRomeo_GiuliaQuadrifoglio_2017Grille6A_Material1_0",
+        "nodeIndex": 71,
+        "mesh": "Quadrifoglio:Grille6_Geo_lodA_Grille6_Geo_lodA_AlfaRomeo_GiuliaQuadrifoglio_2017Grille6A_Material_Quadrifoglio:AlfaRomeo_GiuliaQuadrifoglio_2017Grille6A_Material1_0",
+        "meshIndex": 26,
+        "primitive": 0
+      }
+    ],
+    "12": [
+      {
+        "node": "Quadrifoglio:Badge_Geo_lodA_Badge_Geo_lodA_AlfaRomeo_GiuliaQuadrifoglio_2017BadgeA_Material_Quadrifoglio:AlfaRomeo_GiuliaQuadrifoglio_2017BadgeA_Material1_0",
+        "nodeIndex": 73,
+        "mesh": "Quadrifoglio:Badge_Geo_lodA_Badge_Geo_lodA_AlfaRomeo_GiuliaQuadrifoglio_2017BadgeA_Material_Quadrifoglio:AlfaRomeo_GiuliaQuadrifoglio_2017BadgeA_Material1_0",
+        "meshIndex": 27,
+        "primitive": 0
+      }
+    ],
+    "13": [
+      {
+        "node": "Quadrifoglio:Engine_Geo_lodA_Engine_Geo_lodA_AlfaRomeo_GiuliaQuadrifoglio_2017EngineA_Material_Quadrifoglio:AlfaRomeo_GiuliaQuadrifoglio_2017EngineA_Material1_0",
+        "nodeIndex": 75,
+        "mesh": "Quadrifoglio:Engine_Geo_lodA_Engine_Geo_lodA_AlfaRomeo_GiuliaQuadrifoglio_2017EngineA_Material_Quadrifoglio:AlfaRomeo_GiuliaQuadrifoglio_2017EngineA_Material1_0",
+        "meshIndex": 28,
+        "primitive": 0
+      }
+    ],
+    "14": [
+      {
+        "node": "Quadrifoglio:Window_Geo_lodA_Window_Geo_lodA_AlfaRomeo_GiuliaQuadrifoglio_2017Window_Material_light_glass_0",
+        "nodeIndex": 78,
+        "mesh": "Quadrifoglio:Window_Geo_lodA_Window_Geo_lodA_AlfaRomeo_GiuliaQuadrifoglio_2017Window_Material_light_glass_0",
+        "meshIndex": 30,
+        "primitive": 0
+      }
+    ],
+    "15": [
+      {
+        "node": "Quadrifoglio:Window_Geo_lodA_Window_Geo_lodA_AlfaRomeo_GiuliaQuadrifoglio_2017Window_Material_red_glass_0",
+        "nodeIndex": 79,
+        "mesh": "Quadrifoglio:Window_Geo_lodA_Window_Geo_lodA_AlfaRomeo_GiuliaQuadrifoglio_2017Window_Material_red_glass_0",
+        "meshIndex": 31,
+        "primitive": 0
+      }
+    ],
+    "16": [
+      {
+        "node": "Quadrifoglio:Grille4_Geo_lodA_Grille4_Geo_lodA_AlfaRomeo_GiuliaQuadrifoglio_2017Grille4A_Material_Quadrifoglio:AlfaRomeo_GiuliaQuadrifoglio_2017Grille4A_Material1_0",
+        "nodeIndex": 81,
+        "mesh": "Quadrifoglio:Grille4_Geo_lodA_Grille4_Geo_lodA_AlfaRomeo_GiuliaQuadrifoglio_2017Grille4A_Material_Quadrifoglio:AlfaRomeo_GiuliaQuadrifoglio_2017Grille4A_Material1_0",
+        "meshIndex": 32,
+        "primitive": 0
+      }
+    ],
+    "17": [
+      {
+        "node": "Quadrifoglio:ManufacturerPlate_Geo_lodA_ManufacturerPlate_Geo_lodA_AlfaRomeo_GiuliaQuadrifoglio_2017ManufacturerPlateA_Material_Quadrifoglio:AlfaRomeo_GiuliaQuadrifoglio_2017ManufacturerPlateA_Material1_0",
+        "nodeIndex": 83,
+        "mesh": "Quadrifoglio:ManufacturerPlate_Geo_lodA_ManufacturerPlate_Geo_lodA_AlfaRomeo_GiuliaQuadrifoglio_2017ManufacturerPlateA_Material_Quadrifoglio:AlfaRomeo_GiuliaQuadrifoglio_2017ManufacturerPlateA_Material1_0",
+        "meshIndex": 33,
+        "primitive": 0
+      }
+    ],
+    "18": [
+      {
+        "node": "Quadrifoglio:Base_Geo_lodA_Base_Geo_lodA_AlfaRomeo_GiuliaQuadrifoglio_2017Base_Material_Quadrifoglio:AlfaRomeo_GiuliaQuadrifoglio_2017Base_Material1_0",
+        "nodeIndex": 85,
+        "mesh": "Quadrifoglio:Base_Geo_lodA_Base_Geo_lodA_AlfaRomeo_GiuliaQuadrifoglio_2017Base_Material_Quadrifoglio:AlfaRomeo_GiuliaQuadrifoglio_2017Base_Material1_0",
+        "meshIndex": 34,
+        "primitive": 0
+      }
+    ],
+    "19": [
+      {
+        "node": "Quadrifoglio:Grille1_Geo_lodA_Grille1_Geo_lodA_AlfaRomeo_GiuliaQuadrifoglio_2017Grille1A_Material_Quadrifoglio:AlfaRomeo_GiuliaQuadrifoglio_2017Grille1A_Material1_0",
+        "nodeIndex": 87,
+        "mesh": "Quadrifoglio:Grille1_Geo_lodA_Grille1_Geo_lodA_AlfaRomeo_GiuliaQuadrifoglio_2017Grille1A_Material_Quadrifoglio:AlfaRomeo_GiuliaQuadrifoglio_2017Grille1A_Material1_0",
+        "meshIndex": 35,
+        "primitive": 0
+      }
+    ],
+    "20": [
+      {
+        "node": "Quadrifoglio:Grille5_Geo_lodA_Grille5_Geo_lodA_AlfaRomeo_GiuliaQuadrifoglio_2017Grille5A_Material_Quadrifoglio:AlfaRomeo_GiuliaQuadrifoglio_2017Grille5A_Material1_0",
+        "nodeIndex": 89,
+        "mesh": "Quadrifoglio:Grille5_Geo_lodA_Grille5_Geo_lodA_AlfaRomeo_GiuliaQuadrifoglio_2017Grille5A_Material_Quadrifoglio:AlfaRomeo_GiuliaQuadrifoglio_2017Grille5A_Material1_0",
+        "meshIndex": 36,
+        "primitive": 0
+      }
+    ],
+    "21": [
+      {
+        "node": "Quadrifoglio:Interior_Geo_lodA_Interior_Geo_lodA_AlfaRomeo_GiuliaQuadrifoglio_2017InteriorA_Material_Quadrifoglio:AlfaRomeo_GiuliaQuadrifoglio_2017InteriorA_Material1_0",
+        "nodeIndex": 91,
+        "mesh": "Quadrifoglio:Interior_Geo_lodA_Interior_Geo_lodA_AlfaRomeo_GiuliaQuadrifoglio_2017InteriorA_Material_Quadrifoglio:AlfaRomeo_GiuliaQuadrifoglio_2017InteriorA_Material1_0",
+        "meshIndex": 37,
+        "primitive": 0
+      }
+    ],
+    "22": [
+      {
+        "node": "Quadrifoglio:Interior_Geo_lodA_Interior_Geo_lodA_AlfaRomeo_GiuliaQuadrifoglio_2017InteriorA_Material_color_Int_0",
+        "nodeIndex": 92,
+        "mesh": "Quadrifoglio:Interior_Geo_lodA_Interior_Geo_lodA_AlfaRomeo_GiuliaQuadrifoglio_2017InteriorA_Material_color_Int_0",
+        "meshIndex": 38,
+        "primitive": 0
+      }
+    ],
+    "23": [
+      {
+        "node": "Quadrifoglio:Interior_Geo_lodA_Interior_Geo_lodA_AlfaRomeo_GiuliaQuadrifoglio_2017InteriorA_Material_emiss_0",
+        "nodeIndex": 93,
+        "mesh": "Quadrifoglio:Interior_Geo_lodA_Interior_Geo_lodA_AlfaRomeo_GiuliaQuadrifoglio_2017InteriorA_Material_emiss_0",
+        "meshIndex": 39,
+        "primitive": 0
+      }
+    ],
+    "24": [
+      {
+        "node": "Quadrifoglio:Light_Geo_lodA_Light_Geo_lodA_AlfaRomeo_GiuliaQuadrifoglio_2017LightA_Material_Quadrifoglio:AlfaRomeo_GiuliaQuadrifoglio_2017LightA_Material1_0",
+        "nodeIndex": 95,
+        "mesh": "Quadrifoglio:Light_Geo_lodA_Light_Geo_lodA_AlfaRomeo_GiuliaQuadrifoglio_2017LightA_Material_Quadrifoglio:AlfaRomeo_GiuliaQuadrifoglio_2017LightA_Material1_0",
+        "meshIndex": 40,
+        "primitive": 0
+      }
+    ]
+  },
+  "allImageNames": [
+    {
+      "index": 0,
+      "name": "",
+      "uri": null,
+      "mimeType": "image/png",
+      "bufferView": 5
+    },
+    {
+      "index": 1,
+      "name": "",
+      "uri": null,
+      "mimeType": "image/png",
+      "bufferView": 6
+    },
+    {
+      "index": 2,
+      "name": "",
+      "uri": null,
+      "mimeType": "image/png",
+      "bufferView": 7
+    },
+    {
+      "index": 3,
+      "name": "",
+      "uri": null,
+      "mimeType": "image/png",
+      "bufferView": 8
+    },
+    {
+      "index": 4,
+      "name": "",
+      "uri": null,
+      "mimeType": "image/png",
+      "bufferView": 9
+    },
+    {
+      "index": 5,
+      "name": "",
+      "uri": null,
+      "mimeType": "image/png",
+      "bufferView": 10
+    },
+    {
+      "index": 6,
+      "name": "",
+      "uri": null,
+      "mimeType": "image/png",
+      "bufferView": 11
+    },
+    {
+      "index": 7,
+      "name": "",
+      "uri": null,
+      "mimeType": "image/png",
+      "bufferView": 12
+    },
+    {
+      "index": 8,
+      "name": "",
+      "uri": null,
+      "mimeType": "image/png",
+      "bufferView": 13
+    },
+    {
+      "index": 9,
+      "name": "",
+      "uri": null,
+      "mimeType": "image/png",
+      "bufferView": 14
+    },
+    {
+      "index": 10,
+      "name": "",
+      "uri": null,
+      "mimeType": "image/png",
+      "bufferView": 15
+    },
+    {
+      "index": 11,
+      "name": "",
+      "uri": null,
+      "mimeType": "image/png",
+      "bufferView": 16
+    },
+    {
+      "index": 12,
+      "name": "",
+      "uri": null,
+      "mimeType": "image/png",
+      "bufferView": 17
+    },
+    {
+      "index": 13,
+      "name": "",
+      "uri": null,
+      "mimeType": "image/png",
+      "bufferView": 18
+    },
+    {
+      "index": 14,
+      "name": "",
+      "uri": null,
+      "mimeType": "image/png",
+      "bufferView": 19
+    },
+    {
+      "index": 15,
+      "name": "",
+      "uri": null,
+      "mimeType": "image/png",
+      "bufferView": 20
+    },
+    {
+      "index": 16,
+      "name": "",
+      "uri": null,
+      "mimeType": "image/png",
+      "bufferView": 21
+    },
+    {
+      "index": 17,
+      "name": "",
+      "uri": null,
+      "mimeType": "image/png",
+      "bufferView": 22
+    },
+    {
+      "index": 18,
+      "name": "",
+      "uri": null,
+      "mimeType": "image/png",
+      "bufferView": 23
+    },
+    {
+      "index": 19,
+      "name": "",
+      "uri": null,
+      "mimeType": "image/png",
+      "bufferView": 24
+    },
+    {
+      "index": 20,
+      "name": "",
+      "uri": null,
+      "mimeType": "image/png",
+      "bufferView": 25
+    },
+    {
+      "index": 21,
+      "name": "",
+      "uri": null,
+      "mimeType": "image/png",
+      "bufferView": 26
+    },
+    {
+      "index": 22,
+      "name": "",
+      "uri": null,
+      "mimeType": "image/png",
+      "bufferView": 27
+    },
+    {
+      "index": 23,
+      "name": "",
+      "uri": null,
+      "mimeType": "image/png",
+      "bufferView": 28
+    },
+    {
+      "index": 24,
+      "name": "",
+      "uri": null,
+      "mimeType": "image/png",
+      "bufferView": 29
+    },
+    {
+      "index": 25,
+      "name": "",
+      "uri": null,
+      "mimeType": "image/png",
+      "bufferView": 30
+    },
+    {
+      "index": 26,
+      "name": "",
+      "uri": null,
+      "mimeType": "image/png",
+      "bufferView": 31
+    },
+    {
+      "index": 27,
+      "name": "",
+      "uri": null,
+      "mimeType": "image/png",
+      "bufferView": 32
+    },
+    {
+      "index": 28,
+      "name": "",
+      "uri": null,
+      "mimeType": "image/png",
+      "bufferView": 33
+    }
+  ],
+  "lodNodes": [
+    "Quadrifoglio:Carbon1_Geo_lodA_Carbon1_Geo_lodA_AlfaRomeo_GiuliaQuadrifoglio_2017Carbon1_Material",
+    "Quadrifoglio:Carbon1_Geo_lodA_Carbon1_Geo_lodA_AlfaRomeo_GiuliaQuadrifoglio_2017Carbon1_Material_Quadrifoglio:AlfaRomeo_GiuliaQuadrifoglio_2017Carbon1_Material1_0",
+    "Quadrifoglio:Grille2_Geo_lodA_Grille2_Geo_lodA_AlfaRomeo_GiuliaQuadrifoglio_2017Grille2A_Material",
+    "Quadrifoglio:Grille2_Geo_lodA_Grille2_Geo_lodA_AlfaRomeo_GiuliaQuadrifoglio_2017Grille2A_Material_Quadrifoglio:AlfaRomeo_GiuliaQuadrifoglio_2017Grille2A_Material1_0",
+    "Quadrifoglio:SeatBelt_Geo_lodA_SeatBelt_Geo_lodA_AlfaRomeo_GiuliaQuadrifoglio_2017SeatBelt_Material",
+    "Quadrifoglio:SeatBelt_Geo_lodA_SeatBelt_Geo_lodA_AlfaRomeo_GiuliaQuadrifoglio_2017SeatBelt_Material_Quadrifoglio:AlfaRomeo_GiuliaQuadrifoglio_2017Coloured_Material1_0",
+    "Quadrifoglio:WindowInside_Geo_lodA_WindowInside_Geo_lodA_AlfaRomeo_GiuliaQuadrifoglio_2017WindowInside_Material",
+    "Quadrifoglio:WindowInside_Geo_lodA_WindowInside_Geo_lodA_AlfaRomeo_GiuliaQuadrifoglio_2017WindowInside_Material_Quadrifoglio:AlfaRomeo_GiuliaQuadrifoglio_2017Window_Material1_0",
+    "Quadrifoglio:WindowInside_Geo_lodA_WindowInside_Geo_lodA_AlfaRomeo_GiuliaQuadrifoglio_2017WindowInside_Material_orange_glass_0",
+    "Quadrifoglio:Paint_Geo_lodA_Paint_Geo_lodA_AlfaRomeo_GiuliaQuadrifoglio_2017Paint_Material",
+    "Quadrifoglio:Paint_Geo_lodA_Paint_Geo_lodA_AlfaRomeo_GiuliaQuadrifoglio_2017Paint_Material_Quadrifoglio:AlfaRomeo_GiuliaQuadrifoglio_2017Paint_Material1_0",
+    "Quadrifoglio:Coloured_Geo_lodA_Coloured_Geo_lodA_AlfaRomeo_GiuliaQuadrifoglio_2017Coloured_Material",
+    "Quadrifoglio:Coloured_Geo_lodA_Coloured_Geo_lodA_AlfaRomeo_GiuliaQuadrifoglio_2017Coloured_Material_Quadrifoglio:AlfaRomeo_GiuliaQuadrifoglio_2017Coloured_Material1_0",
+    "Quadrifoglio:Grille3_Geo_lodA_Grille3_Geo_lodA_AlfaRomeo_GiuliaQuadrifoglio_2017Grille3A_Material",
+    "Quadrifoglio:Grille3_Geo_lodA_Grille3_Geo_lodA_AlfaRomeo_GiuliaQuadrifoglio_2017Grille3A_Material_Quadrifoglio:AlfaRomeo_GiuliaQuadrifoglio_2017Grille3A_Material1_0",
+    "Quadrifoglio:Grille6_Geo_lodA_Grille6_Geo_lodA_AlfaRomeo_GiuliaQuadrifoglio_2017Grille6A_Material",
+    "Quadrifoglio:Grille6_Geo_lodA_Grille6_Geo_lodA_AlfaRomeo_GiuliaQuadrifoglio_2017Grille6A_Material_Quadrifoglio:AlfaRomeo_GiuliaQuadrifoglio_2017Grille6A_Material1_0",
+    "Quadrifoglio:Badge_Geo_lodA_Badge_Geo_lodA_AlfaRomeo_GiuliaQuadrifoglio_2017BadgeA_Material",
+    "Quadrifoglio:Badge_Geo_lodA_Badge_Geo_lodA_AlfaRomeo_GiuliaQuadrifoglio_2017BadgeA_Material_Quadrifoglio:AlfaRomeo_GiuliaQuadrifoglio_2017BadgeA_Material1_0",
+    "Quadrifoglio:Engine_Geo_lodA_Engine_Geo_lodA_AlfaRomeo_GiuliaQuadrifoglio_2017EngineA_Material",
+    "Quadrifoglio:Engine_Geo_lodA_Engine_Geo_lodA_AlfaRomeo_GiuliaQuadrifoglio_2017EngineA_Material_Quadrifoglio:AlfaRomeo_GiuliaQuadrifoglio_2017EngineA_Material1_0",
+    "Quadrifoglio:Window_Geo_lodA_Window_Geo_lodA_AlfaRomeo_GiuliaQuadrifoglio_2017Window_Material",
+    "Quadrifoglio:Window_Geo_lodA_Window_Geo_lodA_AlfaRomeo_GiuliaQuadrifoglio_2017Window_Material_Quadrifoglio:AlfaRomeo_GiuliaQuadrifoglio_2017Window_Material1_0",
+    "Quadrifoglio:Window_Geo_lodA_Window_Geo_lodA_AlfaRomeo_GiuliaQuadrifoglio_2017Window_Material_light_glass_0",
+    "Quadrifoglio:Window_Geo_lodA_Window_Geo_lodA_AlfaRomeo_GiuliaQuadrifoglio_2017Window_Material_red_glass_0",
+    "Quadrifoglio:Grille4_Geo_lodA_Grille4_Geo_lodA_AlfaRomeo_GiuliaQuadrifoglio_2017Grille4A_Material",
+    "Quadrifoglio:Grille4_Geo_lodA_Grille4_Geo_lodA_AlfaRomeo_GiuliaQuadrifoglio_2017Grille4A_Material_Quadrifoglio:AlfaRomeo_GiuliaQuadrifoglio_2017Grille4A_Material1_0",
+    "Quadrifoglio:ManufacturerPlate_Geo_lodA_ManufacturerPlate_Geo_lodA_AlfaRomeo_GiuliaQuadrifoglio_2017ManufacturerPlateA_Material",
+    "Quadrifoglio:ManufacturerPlate_Geo_lodA_ManufacturerPlate_Geo_lodA_AlfaRomeo_GiuliaQuadrifoglio_2017ManufacturerPlateA_Material_Quadrifoglio:AlfaRomeo_GiuliaQuadrifoglio_2017ManufacturerPlateA_Material1_0",
+    "Quadrifoglio:Base_Geo_lodA_Base_Geo_lodA_AlfaRomeo_GiuliaQuadrifoglio_2017Base_Material",
+    "Quadrifoglio:Base_Geo_lodA_Base_Geo_lodA_AlfaRomeo_GiuliaQuadrifoglio_2017Base_Material_Quadrifoglio:AlfaRomeo_GiuliaQuadrifoglio_2017Base_Material1_0",
+    "Quadrifoglio:Grille1_Geo_lodA_Grille1_Geo_lodA_AlfaRomeo_GiuliaQuadrifoglio_2017Grille1A_Material",
+    "Quadrifoglio:Grille1_Geo_lodA_Grille1_Geo_lodA_AlfaRomeo_GiuliaQuadrifoglio_2017Grille1A_Material_Quadrifoglio:AlfaRomeo_GiuliaQuadrifoglio_2017Grille1A_Material1_0",
+    "Quadrifoglio:Grille5_Geo_lodA_Grille5_Geo_lodA_AlfaRomeo_GiuliaQuadrifoglio_2017Grille5A_Material",
+    "Quadrifoglio:Grille5_Geo_lodA_Grille5_Geo_lodA_AlfaRomeo_GiuliaQuadrifoglio_2017Grille5A_Material_Quadrifoglio:AlfaRomeo_GiuliaQuadrifoglio_2017Grille5A_Material1_0",
+    "Quadrifoglio:Interior_Geo_lodA_Interior_Geo_lodA_AlfaRomeo_GiuliaQuadrifoglio_2017InteriorA_Material",
+    "Quadrifoglio:Interior_Geo_lodA_Interior_Geo_lodA_AlfaRomeo_GiuliaQuadrifoglio_2017InteriorA_Material_Quadrifoglio:AlfaRomeo_GiuliaQuadrifoglio_2017InteriorA_Material1_0",
+    "Quadrifoglio:Interior_Geo_lodA_Interior_Geo_lodA_AlfaRomeo_GiuliaQuadrifoglio_2017InteriorA_Material_color_Int_0",
+    "Quadrifoglio:Interior_Geo_lodA_Interior_Geo_lodA_AlfaRomeo_GiuliaQuadrifoglio_2017InteriorA_Material_emiss_0",
+    "Quadrifoglio:Light_Geo_lodA_Light_Geo_lodA_AlfaRomeo_GiuliaQuadrifoglio_2017LightA_Material",
+    "Quadrifoglio:Light_Geo_lodA_Light_Geo_lodA_AlfaRomeo_GiuliaQuadrifoglio_2017LightA_Material_Quadrifoglio:AlfaRomeo_GiuliaQuadrifoglio_2017LightA_Material1_0"
+  ],
+  "lightRelatedNodes": [
+    "3DWheel Front L",
+    "3DWheel Front R",
+    "3DWheel Rear L",
+    "3DWheel Rear R",
+    "Calliper Front L_02",
+    "CalliperBody Front L",
+    "CalliperBadge Front L",
+    "Calliper Front R_03",
+    "CalliperBody Front R",
+    "CalliperBadge Front R",
+    "Calliper Rear L_04",
+    "CalliperBody Rear L",
+    "CalliperBadge Rear L",
+    "Quadrifoglio:CalliperParkingRearL_CalliperParkingRearL_AlfaRomeo_GiuliaQuadrifoglio_2017CalliperGloss_Material",
+    "Quadrifoglio:CalliperParkingRearL_CalliperParkingRearL_AlfaRomeo_GiuliaQuadrifoglio_2017CalliperGloss_Material_phong5_0",
+    "Calliper Rear R_05",
+    "CalliperBody Rear R",
+    "CalliperBadge Rear L",
+    "Quadrifoglio:CalliperParkingRearR_CalliperParkingRearR_AlfaRomeo_GiuliaQuadrifoglio_2017CalliperGloss_Material",
+    "Quadrifoglio:CalliperParkingRearR_CalliperParkingRearR_AlfaRomeo_GiuliaQuadrifoglio_2017CalliperGloss_Material_phong5_0",
+    "Quadrifoglio:Window_Geo_lodA_Window_Geo_lodA_AlfaRomeo_GiuliaQuadrifoglio_2017Window_Material_light_glass_0",
+    "Quadrifoglio:Light_Geo_lodA_Light_Geo_lodA_AlfaRomeo_GiuliaQuadrifoglio_2017LightA_Material",
+    "Quadrifoglio:Light_Geo_lodA_Light_Geo_lodA_AlfaRomeo_GiuliaQuadrifoglio_2017LightA_Material_Quadrifoglio:AlfaRomeo_GiuliaQuadrifoglio_2017LightA_Material1_0"
+  ]
+}
