@@ -52,7 +52,29 @@ export default function CarModel({
   const leftRearFlare2Ref = useRef()
   const rightRearFlare2Ref = useRef()
   const wheelsRef = useRef([]) // Store wheel mesh references
+  const frontWheelsRef = useRef([]) // Front wheels (for steering)
+  const rearWheelsRef = useRef([]) // Rear wheels
   const wheelRotationRef = useRef(0)
+  
+  // Car physics state for realistic steering
+  const carPhysicsRef = useRef({
+    speed: 0,
+    steeringAngle: 0, // Current wheel angle in radians
+    targetSteering: 0, // Target steering from input
+  })
+  
+  // Car configuration (Giulia wheelbase ~2.82m)
+  const CAR_CONFIG = {
+    wheelbase: 2.82, // Distance between front and rear axles
+    maxSteeringAngle: Math.PI / 5, // ~36 degrees max wheel turn
+    maxSpeed: 4, // Max forward speed
+    acceleration: 3,
+    braking: 5,
+    friction: 2,
+    steeringSpeed: 3.5, // How fast wheels turn
+    steeringReturnSpeed: 4.0, // How fast wheels center when no input
+  }
+  
   const FLOOR_Y = -0.78
   const { scene, animations } = useGLTF('/models/giulia.glb')
   
@@ -110,9 +132,18 @@ export default function CarModel({
         const meshName = child.name || ''
         const isGlassLike = /glass|window|windshield/i.test(`${materialName} ${meshName}`)
         
-        // Detect wheel meshes by material name
+        // Detect wheel meshes by material name and position
         if (materialName.includes('Wheel') || materialName.includes('wheel')) {
           wheelsRef.current.push(child)
+          
+          // Determine if front or rear wheel based on Z position
+          // Front wheels have positive Z (towards front of car)
+          const worldPos = new THREE.Vector3()
+          child.getWorldPosition(worldPos)
+          
+          // Store initial local position for reference
+          child.userData.initialPosition = child.position.clone()
+          child.userData.initialRotation = child.rotation.clone()
         }
 
         child.castShadow = !isGlassLike
@@ -394,63 +425,146 @@ export default function CarModel({
       }
     })
     
-    // Wheel rotation and car movement based on driveDirection
+    // Realistic car physics with bicycle model steering
     if (wheelsRef.current.length > 0 && freeRoamActive) {
-      let wheelSpeed = 0
       const group = groupRef.current
+      const physics = carPhysicsRef.current
+      const config = CAR_CONFIG
       
       if (group) {
-        // Get car's forward direction based on its rotation
-        const carRotation = group.rotation.y
-        const forwardX = Math.sin(carRotation)
-        const forwardZ = Math.cos(carRotation)
+        // --- Input Processing (now supports combined throttle + steering) ---
+        let throttleInput = 0
+        let steeringInput = 0
         
-        if (driveDirection === 'forward') {
-          wheelSpeed = delta * 8
-          // Move car forward in its local direction (inverted signs)
-          group.position.x += forwardX * delta * 2
-          group.position.z += forwardZ * delta * 2
-        } else if (driveDirection === 'backward') {
-          wheelSpeed = -delta * 6
-          // Move car backward in its local direction (inverted signs)
-          group.position.x -= forwardX * delta * 1.5
-          group.position.z -= forwardZ * delta * 1.5
-        } else if (driveDirection === 'left') {
-          wheelSpeed = delta * 3
-          // Rotate car left
-          group.rotation.y += delta * 0.8
-        } else if (driveDirection === 'right') {
-          wheelSpeed = delta * 3
-          // Rotate car right
-          group.rotation.y -= delta * 0.8
+        // Handle both old single-direction format and new combined format
+        if (typeof driveDirection === 'object' && driveDirection !== null) {
+          // New combined format: { throttle: 'forward'|'backward'|null, steering: 'left'|'right'|null }
+          if (driveDirection.throttle === 'forward') throttleInput = 1
+          else if (driveDirection.throttle === 'backward') throttleInput = -1
+          if (driveDirection.steering === 'left') steeringInput = 1
+          else if (driveDirection.steering === 'right') steeringInput = -1
+        } else {
+          // Legacy single-direction format (fallback)
+          if (driveDirection === 'forward') throttleInput = 1
+          else if (driveDirection === 'backward') throttleInput = -1
+          if (driveDirection === 'left') steeringInput = 1
+          else if (driveDirection === 'right') steeringInput = -1
         }
         
-        // Keep car on the floor (y = -0.8 to match other sections)
+        // --- Steering (smooth interpolation) ---
+        const targetSteering = steeringInput * config.maxSteeringAngle
+        
+        if (Math.abs(steeringInput) > 0.01) {
+          // Player is actively steering - interpolate towards target
+          physics.steeringAngle = THREE.MathUtils.lerp(
+            physics.steeringAngle,
+            targetSteering,
+            1 - Math.exp(-config.steeringSpeed * delta)
+          )
+        } else {
+          // Auto-center wheels when no steering input
+          physics.steeringAngle = THREE.MathUtils.lerp(
+            physics.steeringAngle,
+            0,
+            1 - Math.exp(-config.steeringReturnSpeed * delta)
+          )
+        }
+        
+        // Clamp steering angle
+        physics.steeringAngle = THREE.MathUtils.clamp(
+          physics.steeringAngle,
+          -config.maxSteeringAngle,
+          config.maxSteeringAngle
+        )
+        
+        // --- Speed / Throttle ---
+        if (throttleInput > 0) {
+          physics.speed += config.acceleration * throttleInput * delta
+        } else if (throttleInput < 0) {
+          physics.speed += config.braking * throttleInput * delta
+        } else {
+          // Friction deceleration when no input
+          const frictionForce = config.friction * delta
+          if (Math.abs(physics.speed) < frictionForce) {
+            physics.speed = 0
+          } else {
+            physics.speed -= Math.sign(physics.speed) * frictionForce
+          }
+        }
+        
+        // Clamp speed
+        physics.speed = THREE.MathUtils.clamp(
+          physics.speed,
+          -config.maxSpeed * 0.4, // Reverse is slower
+          config.maxSpeed
+        )
+        
+        // --- Bicycle Model Movement (arc, not tank turn) ---
+        if (Math.abs(physics.speed) > 0.001) {
+          if (Math.abs(physics.steeringAngle) > 0.001) {
+            // Calculate turn radius from rear axle
+            const turnRadius = config.wheelbase / Math.tan(physics.steeringAngle)
+            
+            // Angular velocity = speed / turnRadius
+            const angularVelocity = physics.speed / turnRadius
+            
+            // Update car heading (rotation)
+            group.rotation.y += angularVelocity * delta
+          }
+          
+          // Move car forward in the direction it's facing
+          const dx = Math.sin(group.rotation.y) * physics.speed * delta
+          const dz = Math.cos(group.rotation.y) * physics.speed * delta
+          
+          group.position.x += dx
+          group.position.z += dz
+        }
+        
+        // Keep car on the floor
         group.position.y = -0.8
-      }
-      
-      // Apply wheel rotation
-      if (wheelSpeed !== 0) {
-        wheelRotationRef.current += wheelSpeed
+        
+        // --- Wheel Visuals ---
+        // Calculate wheel spin based on speed
+        const wheelRadius = 0.34 // ~0.34m for Giulia wheels
+        const spinDelta = (physics.speed * delta) / wheelRadius
+        wheelRotationRef.current += spinDelta
+        
+        // Apply rotation to all wheels
         wheelsRef.current.forEach((wheel) => {
-          // Get wheel's world position to determine which side it's on
+          // Get wheel's world position to determine side and front/rear
           const worldPos = new THREE.Vector3()
           wheel.getWorldPosition(worldPos)
-          // Left side wheels (negative X in world space) rotate opposite direction
           const isLeftSide = worldPos.x < 0
-          wheel.rotation.x = isLeftSide ? -wheelRotationRef.current : wheelRotationRef.current
+          const isFrontWheel = worldPos.z > 0 // Front wheels have positive Z
+          
+          // Wheel spin (all wheels spin based on speed)
+          // Left side wheels rotate opposite direction
+          const spinRotation = isLeftSide ? -wheelRotationRef.current : wheelRotationRef.current
+          wheel.rotation.x = spinRotation
+          
+          // Front wheels also turn for steering (rotate around Y axis)
+          if (isFrontWheel) {
+            // Apply steering angle to front wheels
+            // Negative because of model orientation
+            wheel.rotation.y = -physics.steeringAngle
+          }
         })
       }
     } else if (headlightsOn && wheelsRef.current.length > 0) {
       // Idle wheel spin when engine is on but not driving
       wheelRotationRef.current += delta * 0.5
       wheelsRef.current.forEach((wheel) => {
-        // Get wheel's world position to determine which side it's on
         const worldPos = new THREE.Vector3()
         wheel.getWorldPosition(worldPos)
-        // Left side wheels (negative X in world space) rotate opposite direction
         const isLeftSide = worldPos.x < 0
         wheel.rotation.x = isLeftSide ? -wheelRotationRef.current : wheelRotationRef.current
+        // Reset steering angle when not in free roam
+        wheel.rotation.y = 0
+      })
+    } else {
+      // Reset steering when not active
+      wheelsRef.current.forEach((wheel) => {
+        wheel.rotation.y = 0
       })
     }
     

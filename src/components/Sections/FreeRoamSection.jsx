@@ -749,30 +749,59 @@ export default function FreeRoamSection({
     return () => ctx.revert()
   }, [onFreeRoamEnter, onFreeRoamLeave])
 
-  /* Keyboard support */
+  /* Keyboard support - tracks multiple keys for combined movement */
+  const keysPressed = useRef(new Set())
+  
   useEffect(() => {
     if (!isActive) return
 
-    const keyMap = {
+    const throttleKeys = {
       ArrowUp: 'forward', w: 'forward', W: 'forward',
       ArrowDown: 'backward', s: 'backward', S: 'backward',
+    }
+    const steeringKeys = {
       ArrowLeft: 'left', a: 'left', A: 'left',
       ArrowRight: 'right', d: 'right', D: 'right',
     }
 
+    const updateDriveState = () => {
+      if (!engineOn) return
+      
+      // Determine throttle direction
+      let throttle = null
+      if (keysPressed.current.has('w') || keysPressed.current.has('W') || keysPressed.current.has('ArrowUp')) {
+        throttle = 'forward'
+      } else if (keysPressed.current.has('s') || keysPressed.current.has('S') || keysPressed.current.has('ArrowDown')) {
+        throttle = 'backward'
+      }
+      
+      // Determine steering direction
+      let steering = null
+      if (keysPressed.current.has('a') || keysPressed.current.has('A') || keysPressed.current.has('ArrowLeft')) {
+        steering = 'left'
+      } else if (keysPressed.current.has('d') || keysPressed.current.has('D') || keysPressed.current.has('ArrowRight')) {
+        steering = 'right'
+      }
+      
+      // Update active direction for UI feedback (show primary action)
+      setActiveDirection(throttle || steering)
+      
+      // Send both throttle and steering to car
+      onDrive?.('throttle', throttle, !!throttle)
+      onDrive?.('steering', steering, !!steering)
+    }
+
     const onDown = (e) => {
-      const dir = keyMap[e.key]
-      if (dir && engineOn) {
-        setActiveDirection(dir)
-        onDrive?.(dir, true)
+      if (throttleKeys[e.key] || steeringKeys[e.key]) {
+        keysPressed.current.add(e.key)
+        updateDriveState()
       }
     }
 
     const onUp = (e) => {
-      const dir = keyMap[e.key]
-      if (dir) {
-        setActiveDirection(null)
-        onDrive?.(null, false)
+      if (throttleKeys[e.key] || steeringKeys[e.key]) {
+        keysPressed.current.delete(e.key)
+        updateDriveState()
       }
     }
 
@@ -781,26 +810,33 @@ export default function FreeRoamSection({
     return () => {
       window.removeEventListener('keydown', onDown)
       window.removeEventListener('keyup', onUp)
+      keysPressed.current.clear()
     }
   }, [isActive, onDrive, engineOn])
 
   const handleDriveStart = (direction) => {
     if (!engineOn) return
     setActiveDirection(direction)
-    onDrive?.(direction, true)
+    // Determine if this is throttle or steering
+    const isThrottle = direction === 'forward' || direction === 'backward'
+    const type = isThrottle ? 'throttle' : 'steering'
+    onDrive?.(type, direction, true)
   }
 
-  const handleDriveEnd = () => {
+  const handleDriveEnd = (direction) => {
     setActiveDirection(null)
-    onDrive?.(null, false)
+    // Determine if this is throttle or steering
+    const isThrottle = direction === 'forward' || direction === 'backward'
+    const type = isThrottle ? 'throttle' : 'steering'
+    onDrive?.(type, null, false)
   }
 
   const mkDriveProps = (dir) => ({
     onMouseDown: () => handleDriveStart(dir),
-    onMouseUp: handleDriveEnd,
-    onMouseLeave: handleDriveEnd,
+    onMouseUp: () => handleDriveEnd(dir),
+    onMouseLeave: () => handleDriveEnd(dir),
     onTouchStart: () => handleDriveStart(dir),
-    onTouchEnd: handleDriveEnd,
+    onTouchEnd: () => handleDriveEnd(dir),
   })
 
   /* Headlight beam SVG icon (automotive style) */

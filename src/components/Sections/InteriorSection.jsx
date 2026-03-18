@@ -381,6 +381,8 @@ export default function InteriorSection({ id }) {
   const panelRef = useRef(null);
   const audioRef = useRef(null);
   const fadeIntervalRef = useRef(null);
+  const audioUnlockedRef = useRef(false);
+  const isInSectionRef = useRef(false);
   const [audioHeights, setAudioHeights] = useState(Array(14).fill(10));
 
   // Music fade in/out effect
@@ -388,9 +390,39 @@ export default function InteriorSection({ id }) {
     const audio = new Audio('/sounds/cc catch - strangers by night.mp3');
     audio.loop = true;
     audio.volume = 0;
+    audio.preload = 'auto';
     audioRef.current = audio;
 
+    // Unlock audio on any user interaction (browser autoplay policy)
+    const unlockAudio = () => {
+      if (audioUnlockedRef.current) return;
+      
+      const audio = audioRef.current;
+      if (audio) {
+        // Play and immediately pause to unlock
+        audio.play().then(() => {
+          audio.pause();
+          audio.currentTime = 0;
+          audioUnlockedRef.current = true;
+          
+          // If user is already in section, start playing
+          if (isInSectionRef.current) {
+            audio.play().catch(() => {});
+            fadeAudio(0.3, 2000);
+          }
+        }).catch(() => {});
+      }
+    };
+
+    // Listen for user interactions to unlock audio
+    document.addEventListener('click', unlockAudio, { once: true });
+    document.addEventListener('scroll', unlockAudio, { once: true });
+    document.addEventListener('keydown', unlockAudio, { once: true });
+
     return () => {
+      document.removeEventListener('click', unlockAudio);
+      document.removeEventListener('scroll', unlockAudio);
+      document.removeEventListener('keydown', unlockAudio);
       if (audioRef.current) {
         audioRef.current.pause();
         audioRef.current = null;
@@ -456,19 +488,21 @@ export default function InteriorSection({ id }) {
         start: "top 80%",
         end: "bottom 20%",
         onEnter: () => {
+          isInSectionRef.current = true;
           gsap.to(panel, {
             opacity: 1,
             x: 0,
             duration: 0.8,
             ease: "power3.out",
           });
-          // Start music with fade in
-          if (audioRef.current) {
+          // Start music with fade in (only if audio is unlocked)
+          if (audioRef.current && audioUnlockedRef.current) {
             audioRef.current.play().catch(() => {});
             fadeAudio(0.3, 2000);
           }
         },
         onLeave: () => {
+          isInSectionRef.current = false;
           gsap.to(panel, {
             opacity: 0,
             x: -50,
@@ -478,18 +512,20 @@ export default function InteriorSection({ id }) {
           fadeAudio(0, 1500);
         },
         onEnterBack: () => {
+          isInSectionRef.current = true;
           gsap.to(panel, {
             opacity: 1,
             x: 0,
             duration: 0.5,
           });
-          // Resume music with fade in
-          if (audioRef.current) {
+          // Resume music with fade in (only if audio is unlocked)
+          if (audioRef.current && audioUnlockedRef.current) {
             audioRef.current.play().catch(() => {});
             fadeAudio(0.3, 1500);
           }
         },
         onLeaveBack: () => {
+          isInSectionRef.current = false;
           gsap.to(panel, {
             opacity: 0,
             x: -50,

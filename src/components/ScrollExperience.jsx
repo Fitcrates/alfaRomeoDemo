@@ -147,7 +147,7 @@ export default function ScrollExperience() {
   const [engineOn, setEngineOn] = useState(false)
   const [freeRoamActive, setFreeRoamActive] = useState(false)
   const [hoodOpen, setHoodOpen] = useState(false)
-  const [driveDirection, setDriveDirection] = useState(null)
+  const [driveDirection, setDriveDirection] = useState({ throttle: null, steering: null })
 
   useEffect(() => {
     if (loadingProgress >= 100) {
@@ -203,10 +203,13 @@ export default function ScrollExperience() {
     setEngineOn(prev => !prev)
   }
 
-  const handleDrive = (direction, isActive) => {
+  const handleDrive = (type, direction, isActive) => {
     // Only allow driving when engine is on
     if (engineOn) {
-      setDriveDirection(isActive ? direction : null)
+      setDriveDirection(prev => ({
+        ...prev,
+        [type]: isActive ? direction : null
+      }))
     }
   }
 
