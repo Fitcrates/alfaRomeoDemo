@@ -1,6 +1,6 @@
 import { useRef, useEffect, useState, Suspense, memo } from 'react'
-import { Canvas } from '@react-three/fiber'
-import { useProgress, Environment, ContactShadows, OrbitControls } from '@react-three/drei'
+import { Canvas, useFrame, useThree } from '@react-three/fiber'
+import { useProgress, Environment, ContactShadows } from '@react-three/drei'
 import { EffectComposer, Bloom, Vignette, Noise } from '@react-three/postprocessing'
 import styled from 'styled-components'
 import gsap from 'gsap'
@@ -26,6 +26,49 @@ import ContactSection from './Sections/ContactSection'
 import FooterSection from './Sections/FooterSection'
 
 gsap.registerPlugin(ScrollTrigger)
+
+/**
+ * CameraFollow - Follows the car from behind during free roam driving
+ */
+function CameraFollow({ carPositionRef }) {
+  const { camera } = useThree()
+  const smoothedPosition = useRef(new THREE.Vector3(5, 2, 6))
+  const smoothedTarget = useRef(new THREE.Vector3(0, 0, 0))
+  
+  useFrame((state, delta) => {
+    if (!carPositionRef?.current) return
+    
+    const car = carPositionRef.current
+    const followDistance = 8 // Distance behind car
+    const followHeight = 3 // Height above car
+    const lookAheadDistance = 3 // How far ahead to look
+    
+    // Calculate camera position behind the car based on car's rotation
+    const behindX = car.x - Math.sin(car.rotation) * followDistance
+    const behindZ = car.z - Math.cos(car.rotation) * followDistance
+    
+    // Calculate look-at point ahead of the car
+    const aheadX = car.x + Math.sin(car.rotation) * lookAheadDistance
+    const aheadZ = car.z + Math.cos(car.rotation) * lookAheadDistance
+    
+    // Target positions
+    const targetCamPos = new THREE.Vector3(behindX, followHeight, behindZ)
+    const targetLookAt = new THREE.Vector3(aheadX, 0.5, aheadZ)
+    
+    // Smooth interpolation (frame-rate independent)
+    const lerpSpeed = 3
+    const lerpFactor = 1 - Math.exp(-lerpSpeed * delta)
+    
+    smoothedPosition.current.lerp(targetCamPos, lerpFactor)
+    smoothedTarget.current.lerp(targetLookAt, lerpFactor)
+    
+    // Apply to camera
+    camera.position.copy(smoothedPosition.current)
+    camera.lookAt(smoothedTarget.current)
+  })
+  
+  return null
+}
 
 const Container = styled.div`
   position: relative;
@@ -74,6 +117,9 @@ const CAR_POSITION = [0, -0.8, 0]
 const CAR_ROTATION = Math.PI * 0.05 // Slight angle for visual interest
 
 function Scene({ scrollProgressRef, dnaMode, carColor, headlightsOn, freeRoamActive, hoodOpen, driveDirection }) {
+  // Ref to track car position for camera follow
+  const carPositionRef = useRef({ x: 0, y: -0.8, z: 0, rotation: 0 })
+  
   return (
     <>
       <fog attach="fog" args={['#07090c', 20, 68]} /> {/* Soft distance blend so floor transitions smoothly into background */}
@@ -96,19 +142,12 @@ function Scene({ scrollProgressRef, dnaMode, carColor, headlightsOn, freeRoamAct
         freeRoamActive={freeRoamActive}
         hoodOpen={hoodOpen}
         driveDirection={driveDirection}
+        carPositionRef={carPositionRef}
       />
       
+      {/* Camera follow in free roam - follows car from behind */}
       {freeRoamActive && (
-        <OrbitControls
-          enablePan={true}
-          enableZoom={true}
-          enableRotate={true}
-          minDistance={3}
-          maxDistance={15}
-          minPolarAngle={Math.PI * 0.1}
-          maxPolarAngle={Math.PI * 0.6}
-          target={[0, 0, 0]}
-        />
+        <CameraFollow carPositionRef={carPositionRef} />
       )}
       
       <EffectComposer disableNormalPass multisampling={4}>

@@ -23,7 +23,8 @@ export default function CarModel({
   headlightsOn = false,
   freeRoamActive = false,
   hoodOpen = false,
-  driveDirection = null
+  driveDirection = null,
+  carPositionRef = null // Ref to share car position with camera
 }) {
   const groupRef = useRef()
   const modelRef = useRef()
@@ -134,16 +135,28 @@ export default function CarModel({
         
         // Detect wheel meshes by material name and position
         if (materialName.includes('Wheel') || materialName.includes('wheel')) {
+          // Get the wheel's position in model-local space (not world space)
+          // This is stable regardless of camera or car rotation
+          const localPos = child.position.clone()
+          
+          // Walk up the hierarchy to get position relative to model root
+          let parent = child.parent
+          while (parent && parent !== model) {
+            localPos.applyMatrix4(parent.matrix)
+            parent = parent.parent
+          }
+          
+          // Store wheel metadata for later use
+          child.userData.isFrontWheel = localPos.z > 0 // Front wheels have positive Z in model space
+          child.userData.isLeftWheel = localPos.x < 0 // Left wheels have negative X
+          child.userData.initialRotation = child.rotation.clone()
+          
           wheelsRef.current.push(child)
           
-          // Determine if front or rear wheel based on Z position
-          // Front wheels have positive Z (towards front of car)
-          const worldPos = new THREE.Vector3()
-          child.getWorldPosition(worldPos)
-          
-          // Store initial local position for reference
-          child.userData.initialPosition = child.position.clone()
-          child.userData.initialRotation = child.rotation.clone()
+          // Debug log wheel positions
+          if (process.env.NODE_ENV === 'development') {
+            console.log(`Wheel: ${meshName}, localZ: ${localPos.z.toFixed(2)}, isFront: ${child.userData.isFrontWheel}, isLeft: ${child.userData.isLeftWheel}`)
+          }
         }
 
         child.castShadow = !isGlassLike
@@ -523,30 +536,40 @@ export default function CarModel({
         // Keep car on the floor
         group.position.y = -0.8
         
+        // Export car position for camera follow
+        if (carPositionRef) {
+          carPositionRef.current = {
+            x: group.position.x,
+            y: group.position.y,
+            z: group.position.z,
+            rotation: group.rotation.y
+          }
+        }
+        
         // --- Wheel Visuals ---
         // Calculate wheel spin based on speed
         const wheelRadius = 0.34 // ~0.34m for Giulia wheels
         const spinDelta = (physics.speed * delta) / wheelRadius
         wheelRotationRef.current += spinDelta
         
-        // Apply rotation to all wheels
+        // Apply rotation to all wheels using stored userData (car-local, not world)
         wheelsRef.current.forEach((wheel) => {
-          // Get wheel's world position to determine side and front/rear
-          const worldPos = new THREE.Vector3()
-          wheel.getWorldPosition(worldPos)
-          const isLeftSide = worldPos.x < 0
-          const isFrontWheel = worldPos.z > 0 // Front wheels have positive Z
+          // Use pre-computed flags from model load (stable, car-relative)
+          const isLeftWheel = wheel.userData.isLeftWheel
+          const isFrontWheel = wheel.userData.isFrontWheel
           
-          // Wheel spin (all wheels spin based on speed)
+          // Wheel spin around local X axis (rolling forward/backward)
           // Left side wheels rotate opposite direction
-          const spinRotation = isLeftSide ? -wheelRotationRef.current : wheelRotationRef.current
+          const spinRotation = isLeftWheel ? -wheelRotationRef.current : wheelRotationRef.current
           wheel.rotation.x = spinRotation
           
-          // Front wheels also turn for steering (rotate around Y axis)
+          // Only FRONT wheels turn for steering (rotate around local Y axis)
           if (isFrontWheel) {
-            // Apply steering angle to front wheels
-            // Negative because of model orientation
-            wheel.rotation.y = -physics.steeringAngle
+            // Apply steering angle - positive steering = turn left = wheels point left
+            wheel.rotation.y = physics.steeringAngle
+          } else {
+            // Rear wheels don't steer
+            wheel.rotation.y = 0
           }
         })
       }
@@ -554,10 +577,8 @@ export default function CarModel({
       // Idle wheel spin when engine is on but not driving
       wheelRotationRef.current += delta * 0.5
       wheelsRef.current.forEach((wheel) => {
-        const worldPos = new THREE.Vector3()
-        wheel.getWorldPosition(worldPos)
-        const isLeftSide = worldPos.x < 0
-        wheel.rotation.x = isLeftSide ? -wheelRotationRef.current : wheelRotationRef.current
+        const isLeftWheel = wheel.userData.isLeftWheel
+        wheel.rotation.x = isLeftWheel ? -wheelRotationRef.current : wheelRotationRef.current
         // Reset steering angle when not in free roam
         wheel.rotation.y = 0
       })

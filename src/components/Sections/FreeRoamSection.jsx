@@ -631,61 +631,21 @@ export default function FreeRoamSection({
     }
   }, [])
 
-  // Crossfade loop for seamless engine sound
-  const startCrossfadeLoop = () => {
-    if (!runningSoundRef.current || !runningSound2Ref.current) return
+  // Start engine running sound with native loop
+  const startEngineLoop = () => {
+    if (!runningSoundRef.current) return
     
-    const audio1 = runningSoundRef.current
-    const audio2 = runningSound2Ref.current
-    const crossfadeDuration = 1.5
-    const targetVolume = 0.6
-    
-    audio1.currentTime = 0
-    audio1.volume = targetVolume
-    audio1.play().catch(() => {})
-    
-    const audioDuration = audio1.duration || 5
-    const loopPoint = Math.max(0.5, audioDuration - crossfadeDuration)
-    
-    let activeAudio = 1
-    
-    crossfadeIntervalRef.current = setInterval(() => {
-      if (!engineWasOnRef.current) {
-        clearInterval(crossfadeIntervalRef.current)
-        return
-      }
-      
-      const currentAudio = activeAudio === 1 ? audio1 : audio2
-      const nextAudio = activeAudio === 1 ? audio2 : audio1
-      
-      if (currentAudio.currentTime >= loopPoint) {
-        nextAudio.currentTime = 0
-        nextAudio.volume = 0
-        nextAudio.play().catch(() => {})
-        
-        const fadeSteps = 30
-        let step = 0
-        const fadeInterval = setInterval(() => {
-          step++
-          const progress = step / fadeSteps
-          currentAudio.volume = targetVolume * (1 - progress)
-          nextAudio.volume = targetVolume * progress
-          
-          if (step >= fadeSteps) {
-            clearInterval(fadeInterval)
-            currentAudio.pause()
-            currentAudio.currentTime = 0
-          }
-        }, (crossfadeDuration * 1000) / fadeSteps)
-        
-        activeAudio = activeAudio === 1 ? 2 : 1
-      }
-    }, 100)
+    const audio = runningSoundRef.current
+    audio.loop = true // Use native HTML5 loop
+    audio.currentTime = 0
+    audio.volume = 0.6
+    audio.play().catch(() => {})
   }
 
   // Handle engine state changes for sound
   useEffect(() => {
     if (engineOn && !engineWasOnRef.current) {
+      // Engine turning ON
       engineWasOnRef.current = true
       
       if (startupSoundRef.current) {
@@ -694,27 +654,27 @@ export default function FreeRoamSection({
         
         startupSoundRef.current.onended = () => {
           if (engineWasOnRef.current) {
-            startCrossfadeLoop()
+            startEngineLoop()
           }
         }
       }
     } else if (!engineOn && engineWasOnRef.current) {
+      // Engine turning OFF - just stop sounds, don't play anything
       engineWasOnRef.current = false
       
-      if (crossfadeIntervalRef.current) {
-        clearInterval(crossfadeIntervalRef.current)
-      }
-      
+      // Stop startup sound and clear its callback
       if (startupSoundRef.current) {
         startupSoundRef.current.pause()
         startupSoundRef.current.onended = null
+        startupSoundRef.current.currentTime = 0
       }
       
-      const fadeOutAudio = (audio) => {
-        if (!audio) return
+      // Fade out running sound
+      if (runningSoundRef.current) {
+        const audio = runningSoundRef.current
         const fadeOut = () => {
-          if (audio.volume > 0.03) {
-            audio.volume = Math.max(0, audio.volume - 0.03)
+          if (audio.volume > 0.05) {
+            audio.volume = Math.max(0, audio.volume - 0.05)
             requestAnimationFrame(fadeOut)
           } else {
             audio.pause()
@@ -724,9 +684,6 @@ export default function FreeRoamSection({
         }
         fadeOut()
       }
-      
-      fadeOutAudio(runningSoundRef.current)
-      fadeOutAudio(runningSound2Ref.current)
     }
   }, [engineOn])
 
