@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState } from 'react'
 import styled, { keyframes, css } from 'styled-components'
 
 const pulse = keyframes`
@@ -123,26 +123,20 @@ const PowerIcon = styled.div`
 
 export default function EngineStartButton({ onClick, size = '120px', active = false }) {
   const [isPressed, setIsPressed] = useState(false)
-  const audioRef = useRef(null)
 
+  // ═══════════════════════════════════════════════════════════════════════════
+  // NOTE: Engine sound is NOT handled here!
+  // Sound is managed by FreeRoamSection based on engine state TRANSITIONS.
+  // This button only toggles the engine state - parent handles the sound.
+  // ═══════════════════════════════════════════════════════════════════════════
   const handleClick = () => {
     setIsPressed(true)
-    
-    if (audioRef.current) {
-      audioRef.current.currentTime = 0
-      audioRef.current.play().catch((e) => {
-        console.warn("Audio playback failed:", e)
-      })
-    }
-    
     setTimeout(() => setIsPressed(false), 150)
-    
     if (onClick) onClick()
   }
 
   return (
     <ButtonContainer $size={size} onClick={handleClick}>
-      <audio ref={audioRef} src="/sounds/GiuliaEngine (mp3cut.net).mp3" preload="auto" />
       <OuterRing />
       <MiddleRing />
       <InnerButton $active={active || isPressed}>

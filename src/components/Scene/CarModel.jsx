@@ -546,30 +546,73 @@ export default function CarModel({
           }
         }
         
-        // --- Wheel Visuals ---
-        // Calculate wheel spin based on speed
+        // ═══════════════════════════════════════════════════════════════════════════
+        // WHEEL VISUALS - Ackermann-like steering geometry
+        // ═══════════════════════════════════════════════════════════════════════════
+        // The wheel meshes in the 3D model have their own local coordinate system.
+        // Typically:
+        // - Rolling (forward motion) = rotation around the wheel's axle
+        // - Steering (turning) = rotation around vertical axis
+        //
+        // We need to apply rotations in the correct order and on correct axes.
+        // The initial rotation of the wheel mesh is stored and we add to it.
+        // ═══════════════════════════════════════════════════════════════════════════
+        
         const wheelRadius = 0.34 // ~0.34m for Giulia wheels
         const spinDelta = (physics.speed * delta) / wheelRadius
         wheelRotationRef.current += spinDelta
         
-        // Apply rotation to all wheels using stored userData (car-local, not world)
+        // Ackermann steering: inner wheel turns more than outer wheel
+        const wheelBase = 2.82 // meters
+        const trackWidth = 1.6 // meters (approximate)
+        
+        // Calculate inner/outer wheel angles for Ackermann geometry
+        let innerAngle = physics.steeringAngle
+        let outerAngle = physics.steeringAngle
+        
+        if (Math.abs(physics.steeringAngle) > 0.01) {
+          // Calculate turn radius from steering angle
+          const turnRadius = wheelBase / Math.tan(Math.abs(physics.steeringAngle))
+          
+          // Inner wheel turns more, outer wheel turns less
+          innerAngle = Math.atan(wheelBase / (turnRadius - trackWidth / 2))
+          outerAngle = Math.atan(wheelBase / (turnRadius + trackWidth / 2))
+          
+          // Apply sign based on steering direction
+          if (physics.steeringAngle < 0) {
+            innerAngle = -innerAngle
+            outerAngle = -outerAngle
+          }
+        }
+        
         wheelsRef.current.forEach((wheel) => {
-          // Use pre-computed flags from model load (stable, car-relative)
           const isLeftWheel = wheel.userData.isLeftWheel
           const isFrontWheel = wheel.userData.isFrontWheel
+          const initialRot = wheel.userData.initialRotation
           
-          // Wheel spin around local X axis (rolling forward/backward)
-          // Left side wheels rotate opposite direction
+          if (!initialRot) return
+          
+          // Start from initial rotation
+          wheel.rotation.copy(initialRot)
+          
+          // Apply rolling rotation (around the wheel's axle - typically X in local space)
+          // Left wheels spin opposite direction when moving forward
           const spinRotation = isLeftWheel ? -wheelRotationRef.current : wheelRotationRef.current
-          wheel.rotation.x = spinRotation
+          wheel.rotation.x = initialRot.x + spinRotation
           
-          // Only FRONT wheels turn for steering (rotate around local Y axis)
+          // Apply steering to front wheels only
           if (isFrontWheel) {
-            // Apply steering angle - positive steering = turn left = wheels point left
-            wheel.rotation.y = physics.steeringAngle
-          } else {
-            // Rear wheels don't steer
-            wheel.rotation.y = 0
+            // Determine if this wheel is inner or outer based on turn direction
+            // Turning left (positive steering): left wheel is inner, right is outer
+            // Turning right (negative steering): right wheel is inner, left is outer
+            const turningLeft = physics.steeringAngle > 0
+            const isInnerWheel = (turningLeft && isLeftWheel) || (!turningLeft && !isLeftWheel)
+            
+            const steerAngle = isInnerWheel ? innerAngle : outerAngle
+            
+            // Apply steering rotation around Z axis (vertical in wheel's local space)
+            // This rotates the wheel to point in the turn direction
+            wheel.rotation.z = initialRot.z + steerAngle
           }
         })
       }
@@ -578,14 +621,21 @@ export default function CarModel({
       wheelRotationRef.current += delta * 0.5
       wheelsRef.current.forEach((wheel) => {
         const isLeftWheel = wheel.userData.isLeftWheel
-        wheel.rotation.x = isLeftWheel ? -wheelRotationRef.current : wheelRotationRef.current
-        // Reset steering angle when not in free roam
-        wheel.rotation.y = 0
+        const initialRot = wheel.userData.initialRotation
+        if (!initialRot) return
+        
+        // Reset to initial rotation and apply only rolling
+        wheel.rotation.copy(initialRot)
+        const spinRotation = isLeftWheel ? -wheelRotationRef.current : wheelRotationRef.current
+        wheel.rotation.x = initialRot.x + spinRotation
       })
     } else {
-      // Reset steering when not active
+      // Reset wheels to initial rotation when not active
       wheelsRef.current.forEach((wheel) => {
-        wheel.rotation.y = 0
+        const initialRot = wheel.userData.initialRotation
+        if (initialRot) {
+          wheel.rotation.copy(initialRot)
+        }
       })
     }
     

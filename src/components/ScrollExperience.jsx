@@ -291,7 +291,13 @@ export default function ScrollExperience() {
 
   const handleDrive = (type, direction, isActive) => {
     // Only allow driving when engine is on
-    if (engineOn) {
+    if (!engineOn) return
+    
+    if (type === 'combined') {
+      // Combined input: direction contains { throttle, steering }
+      setDriveDirection(direction)
+    } else {
+      // Legacy single input (for button controls)
       setDriveDirection(prev => ({
         ...prev,
         [type]: isActive ? direction : null

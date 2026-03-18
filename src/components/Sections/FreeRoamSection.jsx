@@ -749,7 +749,7 @@ export default function FreeRoamSection({
     const updateDriveState = () => {
       if (!engineOn) return
       
-      // Determine throttle direction
+      // Determine throttle direction (W/S or Up/Down arrows)
       let throttle = null
       if (keysPressed.current.has('w') || keysPressed.current.has('W') || keysPressed.current.has('ArrowUp')) {
         throttle = 'forward'
@@ -757,7 +757,7 @@ export default function FreeRoamSection({
         throttle = 'backward'
       }
       
-      // Determine steering direction
+      // Determine steering direction (A/D or Left/Right arrows)
       let steering = null
       if (keysPressed.current.has('a') || keysPressed.current.has('A') || keysPressed.current.has('ArrowLeft')) {
         steering = 'left'
@@ -768,9 +768,11 @@ export default function FreeRoamSection({
       // Update active direction for UI feedback (show primary action)
       setActiveDirection(throttle || steering)
       
-      // Send both throttle and steering to car
-      onDrive?.('throttle', throttle, !!throttle)
-      onDrive?.('steering', steering, !!steering)
+      // ═══════════════════════════════════════════════════════════════════════════
+      // COMBINED INPUT: Send BOTH throttle and steering in a SINGLE call
+      // This ensures React state update captures both values atomically
+      // ═══════════════════════════════════════════════════════════════════════════
+      onDrive?.('combined', { throttle, steering })
     }
 
     const onDown = (e) => {
