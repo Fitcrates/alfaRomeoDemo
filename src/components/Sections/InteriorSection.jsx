@@ -398,31 +398,36 @@ export default function InteriorSection({ id }) {
       if (audioUnlockedRef.current) return;
       
       const audio = audioRef.current;
-      if (audio) {
-        // Play and immediately pause to unlock
+      if (audio && !audioUnlockedRef.current) {
+        // Play and immediately pause to unlock browser audio context
         audio.play().then(() => {
           audio.pause();
           audio.currentTime = 0;
           audioUnlockedRef.current = true;
           
-          // If user is already in section, start playing
+          // If user is already in section, start playing immediately
           if (isInSectionRef.current) {
             audio.play().catch(() => {});
             fadeAudio(0.3, 2000);
           }
-        }).catch(() => {});
+        }).catch(() => {
+          // Play failed - browser still blocking, will retry on next interaction
+        });
       }
     };
 
-    // Listen for user interactions to unlock audio
-    document.addEventListener('click', unlockAudio, { once: true });
-    document.addEventListener('scroll', unlockAudio, { once: true });
-    document.addEventListener('keydown', unlockAudio, { once: true });
+    // Listen for user GESTURE to unlock audio (browser autoplay policy)
+    // NOTE: 'scroll' does NOT count as a user gesture - only click/tap/keypress work
+    const events = ['click', 'touchstart', 'keydown', 'mousedown'];
+    events.forEach(event => {
+      document.addEventListener(event, unlockAudio, { once: true, passive: true });
+    });
 
     return () => {
-      document.removeEventListener('click', unlockAudio);
-      document.removeEventListener('scroll', unlockAudio);
-      document.removeEventListener('keydown', unlockAudio);
+      // Remove all event listeners
+      events.forEach(event => {
+        document.removeEventListener(event, unlockAudio);
+      });
       if (audioRef.current) {
         audioRef.current.pause();
         audioRef.current = null;

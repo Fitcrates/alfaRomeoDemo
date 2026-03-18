@@ -10,6 +10,7 @@ import * as THREE from 'three'
 import CarModel from './Scene/CarModel'
 import Lighting from './Scene/Lighting'
 import Floor from './Scene/Floor'
+import Sky from './Scene/Sky'
 import CameraController from './Scene/CameraController'
 import LoadingScreen from './Layout/LoadingScreen'
 import Navbar from './Layout/Navbar'
@@ -166,9 +167,10 @@ function Scene({ scrollProgressRef, dnaMode, carColor, headlightsOn, freeRoamAct
   
   return (
     <>
-      <fog attach="fog" args={['#07090c', 20, 68]} /> {/* Soft distance blend so floor transitions smoothly into background */}
+      {/* Fog removed - sky handles horizon blend with gradient */}
       <Environment preset="sunset" background={false} blur={0.8} environmentIntensity={0.35} /> {/* Keep IBL constant so engine ON does not darken the whole scene */}
       <Lighting /> {/* Static studio rig; no lights-on dimming here */}
+      <Sky /> {/* Procedural sky dome with gradient, horizon glow, and stars */}
       <Floor />
       <ContactShadows position={[0, -0.82, 0]} opacity={0.35} scale={14} blur={2.2} far={4} resolution={1024} color="#000000" />
       

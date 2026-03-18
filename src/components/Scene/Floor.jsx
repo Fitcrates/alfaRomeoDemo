@@ -116,9 +116,9 @@ export default function Floor() {
         <meshBasicMaterial color="#000000" side={THREE.DoubleSide} />
       </mesh>
 
-      {/* Vertical gradient cylinder for horizon fade */}
-      <mesh position={[0, 3, 0]}>
-        <cylinderGeometry args={[50, 50, 12, 64, 1, true]} />
+      {/* Vertical gradient cylinder for horizon fade - blends floor into sky */}
+      <mesh position={[0, 0, 0]}>
+        <cylinderGeometry args={[55, 55, 8, 64, 1, true]} />
         <shaderMaterial
           vertexShader={`
             varying vec2 vUv;
@@ -130,9 +130,12 @@ export default function Floor() {
           fragmentShader={`
             varying vec2 vUv;
             void main() {
-              // Gradient from bottom (transparent) to top (opaque)
-              float alpha = smoothstep(0.0, 0.6, vUv.y);
-              gl_FragColor = vec4(0.0, 0.0, 0.0, alpha);
+              // Gradient from bottom (opaque dark) to top (transparent)
+              // This creates a smooth blend between floor and sky
+              float alpha = smoothstep(0.8, 0.2, vUv.y);
+              // Match sky horizon color for seamless blend
+              vec3 horizonColor = vec3(0.04, 0.04, 0.05);
+              gl_FragColor = vec4(horizonColor, alpha * 0.9);
             }
           `}
           transparent={true}
