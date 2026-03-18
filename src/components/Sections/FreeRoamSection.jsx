@@ -594,83 +594,106 @@ export default function FreeRoamSection({
   const [isActive, setIsActive] = useState(false)
   const [activeDirection, setActiveDirection] = useState(null)
   
-  // Engine sound refs
+  // ═══════════════════════════════════════════════════════════════════════════
+  // ENGINE SOUND SYSTEM
+  // ═══════════════════════════════════════════════════════════════════════════
+  // IMPORTANT: DO NOT MODIFY WITHOUT UNDERSTANDING THE LOGIC!
+  // 
+  // The sound system has TWO states:
+  // 1. engineOn (prop) - Current engine state from parent
+  // 2. engineWasOnRef - Previous engine state (to detect CHANGES)
+  //
+  // Sound should ONLY play when engine TURNS ON (false -> true)
+  // Sound should ONLY stop when engine TURNS OFF (true -> false)
+  // Sound should NEVER play on component mount or when engineOn is already false
+  // ═══════════════════════════════════════════════════════════════════════════
+  
   const startupSoundRef = useRef(null)
   const runningSoundRef = useRef(null)
-  const runningSound2Ref = useRef(null)
-  const crossfadeIntervalRef = useRef(null)
-  const engineWasOnRef = useRef(false)
+  // Track if we've already synced with the initial engineOn state
+  const initialSyncDoneRef = useRef(false)
+  // Track the PREVIOUS engine state to detect transitions
+  const prevEngineOnRef = useRef(false)
 
-  // Initialize engine sounds
+  // Initialize audio elements ONCE on mount
   useEffect(() => {
     startupSoundRef.current = new Audio('/sounds/GiuliaEngine (mp3cut.net).mp3')
     startupSoundRef.current.volume = 0.6
     
     runningSoundRef.current = new Audio('/sounds/engingRunning.mp3')
     runningSoundRef.current.volume = 0
-    
-    runningSound2Ref.current = new Audio('/sounds/engingRunning.mp3')
-    runningSound2Ref.current.volume = 0
+    runningSoundRef.current.loop = true // Native HTML5 loop for seamless playback
 
     return () => {
+      // Cleanup on unmount
       if (startupSoundRef.current) {
         startupSoundRef.current.pause()
+        startupSoundRef.current.onended = null
         startupSoundRef.current = null
       }
       if (runningSoundRef.current) {
         runningSoundRef.current.pause()
         runningSoundRef.current = null
       }
-      if (runningSound2Ref.current) {
-        runningSound2Ref.current.pause()
-        runningSound2Ref.current = null
-      }
-      if (crossfadeIntervalRef.current) {
-        clearInterval(crossfadeIntervalRef.current)
-      }
     }
   }, [])
 
-  // Start engine running sound with native loop
+  // Start the engine running loop sound (called after startup sound ends)
   const startEngineLoop = () => {
     if (!runningSoundRef.current) return
-    
     const audio = runningSoundRef.current
-    audio.loop = true // Use native HTML5 loop
     audio.currentTime = 0
     audio.volume = 0.6
     audio.play().catch(() => {})
   }
 
-  // Handle engine state changes for sound
+  // Handle engine state TRANSITIONS (not just state)
   useEffect(() => {
-    if (engineOn && !engineWasOnRef.current) {
-      // Engine turning ON
-      engineWasOnRef.current = true
-      
+    // On first render, just sync the ref with current state - DON'T play sounds
+    if (!initialSyncDoneRef.current) {
+      initialSyncDoneRef.current = true
+      prevEngineOnRef.current = engineOn
+      return // EXIT - no sound on initial mount
+    }
+    
+    // Detect state TRANSITION
+    const wasOn = prevEngineOnRef.current
+    const isOn = engineOn
+    
+    // Update ref for next render
+    prevEngineOnRef.current = engineOn
+    
+    // ─────────────────────────────────────────────────────────────────────────
+    // ENGINE TURNING ON (was OFF, now ON)
+    // ─────────────────────────────────────────────────────────────────────────
+    if (isOn && !wasOn) {
       if (startupSoundRef.current) {
         startupSoundRef.current.currentTime = 0
         startupSoundRef.current.play().catch(() => {})
         
+        // When startup sound ends, start the running loop
         startupSoundRef.current.onended = () => {
-          if (engineWasOnRef.current) {
+          // Only start loop if engine is STILL on
+          if (prevEngineOnRef.current) {
             startEngineLoop()
           }
         }
       }
-    } else if (!engineOn && engineWasOnRef.current) {
-      // Engine turning OFF - just stop sounds, don't play anything
-      engineWasOnRef.current = false
-      
-      // Stop startup sound and clear its callback
+    }
+    
+    // ─────────────────────────────────────────────────────────────────────────
+    // ENGINE TURNING OFF (was ON, now OFF)
+    // ─────────────────────────────────────────────────────────────────────────
+    if (!isOn && wasOn) {
+      // Stop startup sound immediately and clear callback
       if (startupSoundRef.current) {
         startupSoundRef.current.pause()
-        startupSoundRef.current.onended = null
+        startupSoundRef.current.onended = null // CRITICAL: Remove callback!
         startupSoundRef.current.currentTime = 0
       }
       
-      // Fade out running sound
-      if (runningSoundRef.current) {
+      // Fade out running sound smoothly
+      if (runningSoundRef.current && runningSoundRef.current.volume > 0) {
         const audio = runningSoundRef.current
         const fadeOut = () => {
           if (audio.volume > 0.05) {
@@ -685,6 +708,8 @@ export default function FreeRoamSection({
         fadeOut()
       }
     }
+    
+    // NOTE: If isOn === wasOn, no transition occurred, so no sound action needed
   }, [engineOn])
 
   useEffect(() => {

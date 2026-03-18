@@ -29,14 +29,16 @@ gsap.registerPlugin(ScrollTrigger)
 
 /**
  * FreeRoamCamera - Handles camera in free roam mode
- * - When driving: follows car from behind
+ * - When driving: follows car from behind (smooth transition)
  * - When not driving: OrbitControls for photo mode
  */
 function FreeRoamCamera({ carPositionRef, driveDirection }) {
   const { camera } = useThree()
   const orbitRef = useRef()
-  const smoothedPosition = useRef(new THREE.Vector3(5, 3, 8))
-  const smoothedTarget = useRef(new THREE.Vector3(0, 0, 0))
+  const smoothedPosition = useRef(new THREE.Vector3())
+  const smoothedTarget = useRef(new THREE.Vector3())
+  // Track if we were driving last frame to detect transition
+  const wasDrivingRef = useRef(false)
   
   // Check if actively driving
   const isDriving = driveDirection?.throttle || driveDirection?.steering
@@ -54,10 +56,10 @@ function FreeRoamCamera({ carPositionRef, driveDirection }) {
     
     // Camera follow when driving
     if (isDriving) {
-      const followDistance = 10 // Distance behind car
-      const followHeight = 4.5 // Height above car (to see over control panel)
-      const followOffset = 1.5 // Offset to the right to avoid center UI
-      const lookAheadDistance = 4 // How far ahead to look
+      const followDistance = 8 // Distance behind car
+      const followHeight = 1.5 // Height above car
+      const followOffset = 0.5 // Offset to the right
+      const lookAheadDistance = 2 // How far ahead to look
       
       // Calculate camera position behind and slightly to the side of the car
       const behindX = car.x - Math.sin(car.rotation) * followDistance + Math.cos(car.rotation) * followOffset
@@ -71,8 +73,18 @@ function FreeRoamCamera({ carPositionRef, driveDirection }) {
       const targetCamPos = new THREE.Vector3(behindX, followHeight, behindZ)
       const targetLookAt = new THREE.Vector3(aheadX, 0.3, aheadZ)
       
+      // ─────────────────────────────────────────────────────────────────────────
+      // SMOOTH TRANSITION: When starting to drive, initialize from current camera
+      // position so there's no sudden jump
+      // ─────────────────────────────────────────────────────────────────────────
+      if (!wasDrivingRef.current) {
+        // Just started driving - initialize smoothed values from current camera
+        smoothedPosition.current.copy(camera.position)
+        smoothedTarget.current.set(car.x, 0.3, car.z)
+      }
+      
       // Smooth interpolation (frame-rate independent)
-      const lerpSpeed = 3.5
+      const lerpSpeed = 2.5 // Slightly slower for smoother feel
       const lerpFactor = 1 - Math.exp(-lerpSpeed * delta)
       
       smoothedPosition.current.lerp(targetCamPos, lerpFactor)
@@ -82,6 +94,9 @@ function FreeRoamCamera({ carPositionRef, driveDirection }) {
       camera.position.copy(smoothedPosition.current)
       camera.lookAt(smoothedTarget.current)
     }
+    
+    // Update driving state for next frame
+    wasDrivingRef.current = isDriving
   })
   
   return (

@@ -564,6 +564,10 @@ export default function EngineBaySection({ id, onHoodToggle, hoodOpen }) {
             x: 50,
             duration: 0.5,
           });
+          // Turn off hood transparency when leaving section
+          if (hoodOpen && onHoodToggle) {
+            onHoodToggle();
+          }
         },
         onEnterBack: () => {
           gsap.to(panel, {
@@ -578,12 +582,16 @@ export default function EngineBaySection({ id, onHoodToggle, hoodOpen }) {
             x: 50,
             duration: 0.5,
           });
+          // Turn off hood transparency when leaving section
+          if (hoodOpen && onHoodToggle) {
+            onHoodToggle();
+          }
         },
       });
     });
 
     return () => ctx.revert();
-  }, []);
+  }, [hoodOpen, onHoodToggle]);
 
   return (
     <Section ref={sectionRef} id={id}>
