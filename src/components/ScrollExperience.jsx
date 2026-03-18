@@ -170,7 +170,7 @@ function Scene({ scrollProgressRef, dnaMode, carColor, headlightsOn, freeRoamAct
       {/* Fog removed - sky handles horizon blend with gradient */}
       <Environment preset="sunset" background={false} blur={0.8} environmentIntensity={0.35} /> {/* Keep IBL constant so engine ON does not darken the whole scene */}
       <Lighting /> {/* Static studio rig; no lights-on dimming here */}
-      <Sky /> {/* Procedural sky dome with gradient, horizon glow, and stars */}
+      {/* <Sky /> */} {/* Commented out - procedural sky too heavy, need texture-based solution */}
       <Floor />
       <ContactShadows position={[0, -0.82, 0]} opacity={0.35} scale={14} blur={2.2} far={4} resolution={1024} color="#000000" />
       

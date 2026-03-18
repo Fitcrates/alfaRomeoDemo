@@ -393,38 +393,50 @@ export default function InteriorSection({ id }) {
     audio.preload = 'auto';
     audioRef.current = audio;
 
-    // Unlock audio on any user interaction (browser autoplay policy)
+    // ═══════════════════════════════════════════════════════════════════════════
+    // AUDIO UNLOCK SYSTEM
+    // Browser autoplay policy requires a USER GESTURE (click/tap/keypress)
+    // Scroll does NOT count as a gesture. We must wait for real interaction.
+    // ═══════════════════════════════════════════════════════════════════════════
+    const events = ['click', 'touchstart', 'keydown', 'mousedown'];
+    
     const unlockAudio = () => {
-      if (audioUnlockedRef.current) return;
+      // Already unlocked - remove listeners and exit
+      if (audioUnlockedRef.current) {
+        events.forEach(e => document.removeEventListener(e, unlockAudio));
+        return;
+      }
       
       const audio = audioRef.current;
-      if (audio && !audioUnlockedRef.current) {
-        // Play and immediately pause to unlock browser audio context
-        audio.play().then(() => {
-          audio.pause();
-          audio.currentTime = 0;
-          audioUnlockedRef.current = true;
-          
-          // If user is already in section, start playing immediately
-          if (isInSectionRef.current) {
-            audio.play().catch(() => {});
-            fadeAudio(0.3, 2000);
-          }
-        }).catch(() => {
-          // Play failed - browser still blocking, will retry on next interaction
-        });
-      }
+      if (!audio) return;
+      
+      // Try to play - this will succeed if called from a user gesture
+      audio.play().then(() => {
+        // Success! Audio context is now unlocked
+        audio.pause();
+        audio.currentTime = 0;
+        audioUnlockedRef.current = true;
+        
+        // Remove all listeners since we're unlocked
+        events.forEach(e => document.removeEventListener(e, unlockAudio));
+        
+        // If user is already in section, start playing
+        if (isInSectionRef.current) {
+          audio.play().catch(() => {});
+          fadeAudio(0.3, 2000);
+        }
+      }).catch(() => {
+        // Failed - keep listeners active for next interaction
+        // This happens if the gesture wasn't "strong enough" or browser blocked it
+      });
     };
 
-    // Listen for user GESTURE to unlock audio (browser autoplay policy)
-    // NOTE: 'scroll' does NOT count as a user gesture - only click/tap/keypress work
-    const events = ['click', 'touchstart', 'keydown', 'mousedown'];
+    // Add listeners WITHOUT { once: true } - we'll remove them manually on success
     events.forEach(event => {
-      document.addEventListener(event, unlockAudio, { once: true, passive: true });
+      document.addEventListener(event, unlockAudio, { passive: true });
     });
 
     return () => {
-      // Remove all event listeners
       events.forEach(event => {
         document.removeEventListener(event, unlockAudio);
       });

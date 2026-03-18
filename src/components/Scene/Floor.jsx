@@ -4,13 +4,15 @@ import { useThree, extend } from '@react-three/fiber'
 import * as THREE from 'three'
 
 // Custom shader material for radial gradient fade
+// Fades floor edges to match sky horizon color for seamless blend
 class RadialFadeMaterial extends THREE.ShaderMaterial {
   constructor() {
     super({
       uniforms: {
-        innerRadius: { value: 15.0 },
-        outerRadius: { value: 50.0 },
-        fadeColor: { value: new THREE.Color(0x000000) }
+        innerRadius: { value: 18.0 },
+        outerRadius: { value: 55.0 },
+        // Match sky horizon color (#0a0a0c) for seamless blend
+        fadeColor: { value: new THREE.Color(0x0a0a0c) }
       },
       vertexShader: `
         varying vec2 vUv;
@@ -32,8 +34,8 @@ class RadialFadeMaterial extends THREE.ShaderMaterial {
         void main() {
           float dist = length(vWorldPosition.xz);
           float fade = smoothstep(innerRadius, outerRadius, dist);
-          // Apply exponential falloff for more natural fade
-          fade = pow(fade, 1.5);
+          // Smoother falloff for natural blend with sky
+          fade = pow(fade, 1.2);
           gl_FragColor = vec4(fadeColor, fade);
         }
       `,
@@ -104,44 +106,10 @@ export default function Floor() {
         />
       </mesh>
 
-      {/* Radial gradient fade overlay - smooth transition to darkness */}
+      {/* Radial gradient fade overlay - smooth transition to sky */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.76, 0]}>
         <planeGeometry args={[120, 120]} />
         <radialFadeMaterial />
-      </mesh>
-
-      {/* Outer darkness ring to ensure complete black at edges */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.75, 0]}>
-        <ringGeometry args={[48, 100, 64]} />
-        <meshBasicMaterial color="#000000" side={THREE.DoubleSide} />
-      </mesh>
-
-      {/* Vertical gradient cylinder for horizon fade - blends floor into sky */}
-      <mesh position={[0, 0, 0]}>
-        <cylinderGeometry args={[55, 55, 8, 64, 1, true]} />
-        <shaderMaterial
-          vertexShader={`
-            varying vec2 vUv;
-            void main() {
-              vUv = uv;
-              gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-            }
-          `}
-          fragmentShader={`
-            varying vec2 vUv;
-            void main() {
-              // Gradient from bottom (opaque dark) to top (transparent)
-              // This creates a smooth blend between floor and sky
-              float alpha = smoothstep(0.8, 0.2, vUv.y);
-              // Match sky horizon color for seamless blend
-              vec3 horizonColor = vec3(0.04, 0.04, 0.05);
-              gl_FragColor = vec4(horizonColor, alpha * 0.9);
-            }
-          `}
-          transparent={true}
-          side={THREE.BackSide}
-          depthWrite={false}
-        />
       </mesh>
     </group>
   )
