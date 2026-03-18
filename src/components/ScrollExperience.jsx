@@ -1,6 +1,6 @@
 import { useRef, useEffect, useState, Suspense, memo } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
-import { useProgress, Environment, ContactShadows } from '@react-three/drei'
+import { useProgress, Environment, ContactShadows, OrbitControls } from '@react-three/drei'
 import { EffectComposer, Bloom, Vignette, Noise } from '@react-three/postprocessing'
 import styled from 'styled-components'
 import gsap from 'gsap'
@@ -28,46 +28,75 @@ import FooterSection from './Sections/FooterSection'
 gsap.registerPlugin(ScrollTrigger)
 
 /**
- * CameraFollow - Follows the car from behind during free roam driving
+ * FreeRoamCamera - Handles camera in free roam mode
+ * - When driving: follows car from behind
+ * - When not driving: OrbitControls for photo mode
  */
-function CameraFollow({ carPositionRef }) {
+function FreeRoamCamera({ carPositionRef, driveDirection }) {
   const { camera } = useThree()
-  const smoothedPosition = useRef(new THREE.Vector3(5, 2, 6))
+  const orbitRef = useRef()
+  const smoothedPosition = useRef(new THREE.Vector3(5, 3, 8))
   const smoothedTarget = useRef(new THREE.Vector3(0, 0, 0))
+  
+  // Check if actively driving
+  const isDriving = driveDirection?.throttle || driveDirection?.steering
   
   useFrame((state, delta) => {
     if (!carPositionRef?.current) return
     
     const car = carPositionRef.current
-    const followDistance = 8 // Distance behind car
-    const followHeight = 3 // Height above car
-    const lookAheadDistance = 3 // How far ahead to look
     
-    // Calculate camera position behind the car based on car's rotation
-    const behindX = car.x - Math.sin(car.rotation) * followDistance
-    const behindZ = car.z - Math.cos(car.rotation) * followDistance
+    // Update OrbitControls target to follow car position (for photo mode)
+    if (orbitRef.current && !isDriving) {
+      orbitRef.current.target.set(car.x, 0, car.z)
+      orbitRef.current.update()
+    }
     
-    // Calculate look-at point ahead of the car
-    const aheadX = car.x + Math.sin(car.rotation) * lookAheadDistance
-    const aheadZ = car.z + Math.cos(car.rotation) * lookAheadDistance
-    
-    // Target positions
-    const targetCamPos = new THREE.Vector3(behindX, followHeight, behindZ)
-    const targetLookAt = new THREE.Vector3(aheadX, 0.5, aheadZ)
-    
-    // Smooth interpolation (frame-rate independent)
-    const lerpSpeed = 3
-    const lerpFactor = 1 - Math.exp(-lerpSpeed * delta)
-    
-    smoothedPosition.current.lerp(targetCamPos, lerpFactor)
-    smoothedTarget.current.lerp(targetLookAt, lerpFactor)
-    
-    // Apply to camera
-    camera.position.copy(smoothedPosition.current)
-    camera.lookAt(smoothedTarget.current)
+    // Camera follow when driving
+    if (isDriving) {
+      const followDistance = 10 // Distance behind car
+      const followHeight = 4.5 // Height above car (to see over control panel)
+      const followOffset = 1.5 // Offset to the right to avoid center UI
+      const lookAheadDistance = 4 // How far ahead to look
+      
+      // Calculate camera position behind and slightly to the side of the car
+      const behindX = car.x - Math.sin(car.rotation) * followDistance + Math.cos(car.rotation) * followOffset
+      const behindZ = car.z - Math.cos(car.rotation) * followDistance - Math.sin(car.rotation) * followOffset
+      
+      // Calculate look-at point ahead of the car
+      const aheadX = car.x + Math.sin(car.rotation) * lookAheadDistance
+      const aheadZ = car.z + Math.cos(car.rotation) * lookAheadDistance
+      
+      // Target positions
+      const targetCamPos = new THREE.Vector3(behindX, followHeight, behindZ)
+      const targetLookAt = new THREE.Vector3(aheadX, 0.3, aheadZ)
+      
+      // Smooth interpolation (frame-rate independent)
+      const lerpSpeed = 3.5
+      const lerpFactor = 1 - Math.exp(-lerpSpeed * delta)
+      
+      smoothedPosition.current.lerp(targetCamPos, lerpFactor)
+      smoothedTarget.current.lerp(targetLookAt, lerpFactor)
+      
+      // Apply to camera
+      camera.position.copy(smoothedPosition.current)
+      camera.lookAt(smoothedTarget.current)
+    }
   })
   
-  return null
+  return (
+    <OrbitControls
+      ref={orbitRef}
+      enablePan={true}
+      enableZoom={true}
+      enableRotate={true}
+      enabled={!isDriving} // Disable when driving
+      minDistance={3}
+      maxDistance={20}
+      minPolarAngle={Math.PI * 0.1}
+      maxPolarAngle={Math.PI * 0.6}
+    />
+  )
 }
 
 const Container = styled.div`
@@ -145,9 +174,12 @@ function Scene({ scrollProgressRef, dnaMode, carColor, headlightsOn, freeRoamAct
         carPositionRef={carPositionRef}
       />
       
-      {/* Camera follow in free roam - follows car from behind */}
+      {/* Camera system for free roam */}
       {freeRoamActive && (
-        <CameraFollow carPositionRef={carPositionRef} />
+        <FreeRoamCamera 
+          carPositionRef={carPositionRef} 
+          driveDirection={driveDirection}
+        />
       )}
       
       <EffectComposer disableNormalPass multisampling={4}>
