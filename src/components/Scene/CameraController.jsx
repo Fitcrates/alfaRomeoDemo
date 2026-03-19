@@ -208,8 +208,8 @@ const SECTION_ORDER = [
   'interior',
   'enginebay',
   'gallery',
-  'freeroam',
-  'contact'
+  'contact',
+  'freeroam'
 ]
 
 /**

@@ -118,7 +118,7 @@ export default function RacetrackScene({ carColor, headlightsOn, driveDirectionR
   return (
     <>
       <Lighting />
-      <Environment files="/textures/HdrSkyEvening006_HDR_2K.hdr" background blur={0.0} environmentIntensity={0.65} />
+      <Environment files="/textures/HdrSkyEvening006_HDR_4K.hdr" background blur={0.0} environmentIntensity={0.65} />
 
       <TrackModel />
 

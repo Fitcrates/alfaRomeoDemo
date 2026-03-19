@@ -397,6 +397,7 @@ export default function ScrollExperience() {
           <InteriorSection id="interior" />
           <EngineBaySection id="enginebay" onHoodToggle={handleHoodToggle} hoodOpen={hoodOpen} />
           <GallerySection id="gallery" onColorChange={handleColorChange} />
+          <ContactSection id="contact" />
           <FreeRoamSection
             id="freeroam"
             onFreeRoamEnter={handleFreeRoamEnter}
@@ -407,7 +408,6 @@ export default function ScrollExperience() {
             onToggleEngine={handleToggleEngine}
             onDrive={handleDrive}
           />
-          <ContactSection id="contact" />
           <FooterSection id="footer" />
         </SectionsContainer>
 
