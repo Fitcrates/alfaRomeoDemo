@@ -66,14 +66,14 @@ export default function CarModel({
 
   // Car configuration (Giulia wheelbase ~2.82m)
   const CAR_CONFIG = {
-    wheelbase: 2.82, // Distance between front and rear axles
-    maxSteeringAngle: Math.PI / 5, // ~36 degrees max wheel turn
-    maxSpeed: 20, // Increased for a more progressive and racing feel
-    acceleration: 4,
-    braking: 12,
-    friction: 5,
-    steeringSpeed: 1.5, // Snappier wheels
-    steeringReturnSpeed: 2.0,
+    wheelbase: 4.52, // Distance between front and rear axles
+    maxSteeringAngle: Math.PI / 10, // ~36 degrees max wheel turn
+    maxSpeed: 35, // Increased for a more progressive and racing feel
+    acceleration: 8,
+    braking: 25,
+    friction: 15,
+    steeringSpeed: 2.5, // Snappier wheels
+    steeringReturnSpeed: 2,
   }
 
   const FLOOR_Y = -0.78
@@ -536,7 +536,8 @@ export default function CarModel({
             x: group.position.x,
             y: group.position.y,
             z: group.position.z,
-            rotation: group.rotation.y
+            rotation: group.rotation.y,
+            speed: physics.speed,
           }
         }
 

@@ -166,9 +166,9 @@ export const CAMERA_CONFIGS = {
   // GALLERY SECTION - Rear 3/4 beauty shot
   // ─────────────────────────────────────────────────────────────────────────
   gallery: {
-    position: [-4, 1.5, -5],    // Left-rear angle
-    target: [0, 0.2, 0],        // Car center, slightly low
-    fov: 45,
+    position: [-8, 0.5, -7],    // Left-rear angle
+    target: [2, -2, -1],        // Car center, slightly low
+    fov: 55,
     // ADJUSTMENTS:
     // - Show more rear: position [0, 1.5, -7]
     // - Dramatic low: position [-4, 0.5, -5]
@@ -202,7 +202,7 @@ export const CAMERA_CONFIGS = {
  */
 const SECTION_ORDER = [
   'hero',
-  'engine', 
+  'engine',
   'suspension',
   'wheels',
   'interior',
@@ -211,6 +211,7 @@ const SECTION_ORDER = [
   'contact',
   'freeroam'
 ]
+// NOTE: Footer is NOT included — camera stops at freeroam and OrbitControls takes over
 
 /**
  * CameraController Component
@@ -223,14 +224,14 @@ const SECTION_ORDER = [
  */
 export default function CameraController({ scrollProgressRef, freeRoamActive }) {
   const { camera } = useThree()
-  
+
   // Current interpolated values for smooth transitions
   const currentValues = useRef({
     position: new THREE.Vector3(5, 1.5, 7),
     target: new THREE.Vector3(0, 0, 0),
     fov: 45
   })
-  
+
   // Target values that we're interpolating towards
   const targetValues = useRef({
     position: new THREE.Vector3(5, 1.5, 7),
@@ -245,7 +246,7 @@ export default function CameraController({ scrollProgressRef, freeRoamActive }) 
     camera.lookAt(...heroConfig.target)
     camera.fov = heroConfig.fov
     camera.updateProjectionMatrix()
-    
+
     currentValues.current.position.set(...heroConfig.position)
     currentValues.current.target.set(...heroConfig.target)
     currentValues.current.fov = heroConfig.fov
@@ -254,54 +255,54 @@ export default function CameraController({ scrollProgressRef, freeRoamActive }) 
   useFrame((state, delta) => {
     // Skip camera animation when in free roam (OrbitControls handles it)
     if (freeRoamActive) return
-    
+
     const scrollProgress = scrollProgressRef?.current || 0
     const numSections = SECTION_ORDER.length
-    
+
     // Calculate which sections we're between
     const exactSection = scrollProgress * (numSections - 1)
     const currentSectionIndex = Math.floor(exactSection)
     const nextSectionIndex = Math.min(currentSectionIndex + 1, numSections - 1)
     const sectionProgress = exactSection - currentSectionIndex
-    
+
     // Get section IDs
     const currentSectionId = SECTION_ORDER[currentSectionIndex]
     const nextSectionId = SECTION_ORDER[nextSectionIndex]
-    
+
     // Get camera configs
     const currentConfig = CAMERA_CONFIGS[currentSectionId]
     const nextConfig = CAMERA_CONFIGS[nextSectionId]
-    
+
     // Interpolate target values based on scroll progress
     // Using smooth easing for more natural transitions
     const easedProgress = smoothstep(sectionProgress)
-    
+
     targetValues.current.position.lerpVectors(
       new THREE.Vector3(...currentConfig.position),
       new THREE.Vector3(...nextConfig.position),
       easedProgress
     )
-    
+
     targetValues.current.target.lerpVectors(
       new THREE.Vector3(...currentConfig.target),
       new THREE.Vector3(...nextConfig.target),
       easedProgress
     )
-    
+
     targetValues.current.fov = currentConfig.fov + (nextConfig.fov - currentConfig.fov) * easedProgress
-    
+
     // Smooth interpolation towards target values (frame-rate independent)
     const lerpSpeed = 4 // Lower = smoother but slower, Higher = snappier
     const lerpFactor = 1 - Math.exp(-lerpSpeed * delta)
-    
+
     currentValues.current.position.lerp(targetValues.current.position, lerpFactor)
     currentValues.current.target.lerp(targetValues.current.target, lerpFactor)
     currentValues.current.fov += (targetValues.current.fov - currentValues.current.fov) * lerpFactor
-    
+
     // Apply to camera
     camera.position.copy(currentValues.current.position)
     camera.lookAt(currentValues.current.target)
-    
+
     // Update FOV if changed
     if (Math.abs(camera.fov - currentValues.current.fov) > 0.01) {
       camera.fov = currentValues.current.fov

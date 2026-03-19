@@ -33,81 +33,129 @@ function RacetrackCamera({ carPositionRef, driveDirectionRef }) {
   const smoothedPosition = useRef(new THREE.Vector3())
   const smoothedTarget = useRef(new THREE.Vector3())
   const wasDrivingRef = useRef(false)
-  
+
   useEffect(() => {
     if (carPositionRef?.current) {
-        smoothedTarget.current.set(carPositionRef.current.x, 0.3, carPositionRef.current.z)
+      smoothedTarget.current.set(
+        carPositionRef.current.x,
+        0.3,
+        carPositionRef.current.z
+      )
     }
   }, [carPositionRef])
 
   useFrame((state, delta) => {
     if (!carPositionRef?.current) return
-    
+
     const car = carPositionRef.current
-    const dir = driveDirectionRef?.current || { throttle: null, steering: null }
-    const isDriving = dir.throttle || dir.steering
-    
-    if (orbitRef.current) {
-        orbitRef.current.enabled = !isDriving
+    const dir = driveDirectionRef?.current || {
+      throttle: null,
+      steering: null,
     }
-    
-    const lerpSpeed = 3.5 
-    const lerpFactor = 1 - Math.exp(-lerpSpeed * delta)
-    
+    const hasInput = dir.throttle || dir.steering
+    const carSpeed = Math.abs(car.speed || 0)
+
+    // ── KEY FIX: Camera follows until the car actually stops ──────
+    // Chase if player is giving input OR car is still moving
+    const speedThreshold = 0.3 // Below this speed, switch to orbit
+    const isDriving = hasInput || carSpeed > speedThreshold
+
+    // Dynamically toggle controls without triggering react renders
+    if (orbitRef.current) {
+      orbitRef.current.enabled = !isDriving
+    }
+
     if (isDriving) {
-      const followDistance = 7.5
-      const followHeight = 2.0 // Slightly higher for racetrack visibility
-      const lookAheadDistance = 6
-      
-      const behindX = car.x - Math.sin(car.rotation) * followDistance
-      const behindZ = car.z - Math.cos(car.rotation) * followDistance
-      
-      const steerFactor = dir.steering === 'left' ? 1.0 : (dir.steering === 'right' ? -1.0 : 0)
-      const lookRot = car.rotation + steerFactor * 0.15
-      
-      const aheadX = car.x + Math.sin(lookRot) * lookAheadDistance
-      const aheadZ = car.z + Math.cos(lookRot) * lookAheadDistance
-      
-      const targetCamPos = new THREE.Vector3(behindX, followHeight, behindZ)
+      // ── CHASE CAM TUNING ──────────────────────────────────────────
+      const followDistance = 9 // Distance behind car
+      const followHeight = 2.2 // Height above car
+      const lookAheadDistance = 5 // How far ahead the camera looks
+
+      // ── KEY FIX: Speed-adaptive lerp ──────────────────────────────
+      // Faster car = tighter follow so camera stays behind, not beside
+      const speedRatio = THREE.MathUtils.clamp(carSpeed / 15, 0, 1)
+      const baseLerpSpeed = 2.5 // Gentle at low speed
+      const fastLerpSpeed = 8.0 // Snappy at high speed
+      const lerpSpeed = THREE.MathUtils.lerp(
+        baseLerpSpeed,
+        fastLerpSpeed,
+        speedRatio
+      )
+      const lerpFactor = 1 - Math.exp(-lerpSpeed * delta)
+
+      // ── Camera position: directly behind the car ──────────────────
+      const behindX =
+        car.x - Math.sin(car.rotation) * followDistance
+      const behindZ =
+        car.z - Math.cos(car.rotation) * followDistance
+
+      // ── Subtle "look into the corner" offset ──────────────────────
+      const steerInput =
+        dir.steering === 'left'
+          ? 0.1
+          : dir.steering === 'right'
+            ? -0.1
+            : 0
+      // Only offset the LOOK target, not the camera position
+      const lookRot = car.rotation + steerInput * 0.1
+
+      const aheadX =
+        car.x + Math.sin(lookRot) * lookAheadDistance
+      const aheadZ =
+        car.z + Math.cos(lookRot) * lookAheadDistance
+
+      const targetCamPos = new THREE.Vector3(
+        behindX,
+        followHeight,
+        behindZ
+      )
       const targetLookAt = new THREE.Vector3(aheadX, 0.3, aheadZ)
-      
+
+      // ── Smooth start: seed from current camera on first drive frame
       if (!wasDrivingRef.current) {
         smoothedPosition.current.copy(camera.position)
         if (orbitRef.current) {
           smoothedTarget.current.copy(orbitRef.current.target)
         }
       }
-      
-      smoothedPosition.current.lerp(targetCamPos, lerpFactor * 0.8) 
-      smoothedTarget.current.lerp(targetLookAt, lerpFactor * 1.2)
-      
+
+      // ── POSITION follows tightly (same lerp for both) ────────────
+      smoothedPosition.current.lerp(targetCamPos, lerpFactor)
+      smoothedTarget.current.lerp(targetLookAt, lerpFactor)
+
       camera.position.copy(smoothedPosition.current)
       camera.lookAt(smoothedTarget.current)
-      
     } else {
+      // ── ORBIT / PHOTO MODE ────────────────────────────────────────
+      const photoLerp = 1 - Math.exp(-3 * delta)
       const targetCenter = new THREE.Vector3(car.x, 0.3, car.z)
-      smoothedTarget.current.lerp(targetCenter, lerpFactor * 1.5)
-      
+
+      smoothedTarget.current.lerp(targetCenter, photoLerp)
+
       if (orbitRef.current) {
         orbitRef.current.target.copy(smoothedTarget.current)
         orbitRef.current.update()
       }
+
+      // Keep smoothed cam in sync so chase doesn't snap on resume
+      smoothedPosition.current.copy(camera.position)
     }
+
     wasDrivingRef.current = !!isDriving
   })
-  
+
   return (
     <OrbitControls
       ref={orbitRef}
-      enablePan={false} 
+      enablePan={false}
       enableZoom={true}
       enableRotate={true}
       minDistance={3}
-      maxDistance={30}
+      maxDistance={15}
       minPolarAngle={Math.PI * 0.05}
-      maxPolarAngle={Math.PI * 0.48}
+      maxPolarAngle={Math.PI * 0.52}
       enableDamping={true}
-      dampingFactor={0.05}
+      dampingFactor={0.95}
     />
   )
 }
@@ -122,7 +170,7 @@ export default function RacetrackScene({ carColor, headlightsOn, driveDirectionR
 
       <TrackModel />
 
-      <CarModel 
+      <CarModel
         carPosition={[0, -0.8, 0]}
         carRotation={Math.PI * 0.5} // Facing down track
         carColor={carColor}
@@ -132,14 +180,14 @@ export default function RacetrackScene({ carColor, headlightsOn, driveDirectionR
         driveDirectionRef={driveDirectionRef}
         carPositionRef={carPositionRef}
       />
-      
-      <RacetrackCamera 
-        carPositionRef={carPositionRef} 
+
+      <RacetrackCamera
+        carPositionRef={carPositionRef}
         driveDirectionRef={driveDirectionRef}
       />
 
       <EffectComposer disableNormalPass multisampling={4}>
-        <Bloom 
+        <Bloom
           luminanceThreshold={1.0}
           luminanceSmoothing={0.4}
           intensity={0.6}

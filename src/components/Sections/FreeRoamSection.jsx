@@ -390,12 +390,12 @@ const DirectionButton = styled.button`
 
   &:active {
     transform: ${props => {
-      if (props.$top) return 'translateX(-50%) scale(0.92)'
-      if (props.$bottom) return 'translateX(-50%) scale(0.92)'
-      if (props.$left) return 'translateY(-50%) scale(0.92)'
-      if (props.$right) return 'translateY(-50%) scale(0.92)'
-      return 'scale(0.92)'
-    }};
+    if (props.$top) return 'translateX(-50%) scale(0.92)'
+    if (props.$bottom) return 'translateX(-50%) scale(0.92)'
+    if (props.$left) return 'translateY(-50%) scale(0.92)'
+    if (props.$right) return 'translateY(-50%) scale(0.92)'
+    return 'scale(0.92)'
+  }};
   }
 
   svg {
@@ -427,9 +427,9 @@ const LightsButton = styled.button`
   };
   box-shadow:
     ${props => props.$active
-      ? '0 0 16px rgba(120, 200, 80, 0.25), inset 0 0 8px rgba(120, 200, 80, 0.1)'
-      : '0 4px 16px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.06)'
-    };
+    ? '0 0 16px rgba(120, 200, 80, 0.25), inset 0 0 8px rgba(120, 200, 80, 0.1)'
+    : '0 4px 16px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.06)'
+  };
   color: ${props => props.$active ? '#78c850' : 'rgba(255, 255, 255, 0.35)'};
   cursor: pointer;
   display: flex;
@@ -458,9 +458,9 @@ const LightsButton = styled.button`
   &:hover {
     transform: scale(1.05);
     border-color: ${props => props.$active
-      ? 'rgba(120, 200, 80, 0.6)'
-      : 'rgba(255, 255, 255, 0.2)'
-    };
+    ? 'rgba(120, 200, 80, 0.6)'
+    : 'rgba(255, 255, 255, 0.2)'
+  };
   }
 
   &:active {
@@ -589,12 +589,11 @@ export default function FreeRoamSection({
   onToggleLights,
   onToggleEngine,
   onDrive,
-  forceActive = false
 }) {
   const sectionRef = useRef(null)
-  const [isActive, setIsActive] = useState(forceActive)
+  const [isActive, setIsActive] = useState(false)
   const [activeDirection, setActiveDirection] = useState(null)
-  
+
   // ═══════════════════════════════════════════════════════════════════════════
   // ENGINE SOUND SYSTEM
   // ═══════════════════════════════════════════════════════════════════════════
@@ -608,7 +607,7 @@ export default function FreeRoamSection({
   // Sound should ONLY stop when engine TURNS OFF (true -> false)
   // Sound should NEVER play on component mount or when engineOn is already false
   // ═══════════════════════════════════════════════════════════════════════════
-  
+
   const startupSoundRef = useRef(null)
   const runningSoundRef = useRef(null)
   // Track if we've already synced with the initial engineOn state
@@ -620,7 +619,7 @@ export default function FreeRoamSection({
   useEffect(() => {
     startupSoundRef.current = new Audio('/sounds/GiuliaEngine (mp3cut.net).mp3')
     startupSoundRef.current.volume = 0.6
-    
+
     runningSoundRef.current = new Audio('/sounds/engingRunning.mp3')
     runningSoundRef.current.volume = 0
     runningSoundRef.current.loop = true // Native HTML5 loop for seamless playback
@@ -645,7 +644,7 @@ export default function FreeRoamSection({
     const audio = runningSoundRef.current
     audio.currentTime = 0
     audio.volume = 0.6
-    audio.play().catch(() => {})
+    audio.play().catch(() => { })
   }
 
   // Handle engine state TRANSITIONS (not just state)
@@ -656,22 +655,22 @@ export default function FreeRoamSection({
       prevEngineOnRef.current = engineOn
       return // EXIT - no sound on initial mount
     }
-    
+
     // Detect state TRANSITION
     const wasOn = prevEngineOnRef.current
     const isOn = engineOn
-    
+
     // Update ref for next render
     prevEngineOnRef.current = engineOn
-    
+
     // ─────────────────────────────────────────────────────────────────────────
     // ENGINE TURNING ON (was OFF, now ON)
     // ─────────────────────────────────────────────────────────────────────────
     if (isOn && !wasOn) {
       if (startupSoundRef.current) {
         startupSoundRef.current.currentTime = 0
-        startupSoundRef.current.play().catch(() => {})
-        
+        startupSoundRef.current.play().catch(() => { })
+
         // When startup sound ends, start the running loop
         startupSoundRef.current.onended = () => {
           // Only start loop if engine is STILL on
@@ -681,7 +680,7 @@ export default function FreeRoamSection({
         }
       }
     }
-    
+
     // ─────────────────────────────────────────────────────────────────────────
     // ENGINE TURNING OFF (was ON, now OFF)
     // ─────────────────────────────────────────────────────────────────────────
@@ -692,7 +691,7 @@ export default function FreeRoamSection({
         startupSoundRef.current.onended = null // CRITICAL: Remove callback!
         startupSoundRef.current.currentTime = 0
       }
-      
+
       // Fade out running sound smoothly
       if (runningSoundRef.current && runningSoundRef.current.volume > 0) {
         const audio = runningSoundRef.current
@@ -709,16 +708,11 @@ export default function FreeRoamSection({
         fadeOut()
       }
     }
-    
+
     // NOTE: If isOn === wasOn, no transition occurred, so no sound action needed
   }, [engineOn])
 
   useEffect(() => {
-    if (forceActive) {
-      setIsActive(true)
-      return
-    }
-
     const section = sectionRef.current
     if (!section) return
 
@@ -735,21 +729,11 @@ export default function FreeRoamSection({
     })
 
     return () => ctx.revert()
-  }, [onFreeRoamEnter, onFreeRoamLeave, forceActive])
+  }, [onFreeRoamEnter, onFreeRoamLeave])
 
   /* Keyboard support - tracks multiple keys for combined movement */
   const keysPressed = useRef(new Set())
-  const lastDriveState = useRef({ throttle: null, steering: null })
-  
-  // Use refs for callbacks to prevent effect re-runs
-  const onDriveRef = useRef(onDrive)
-  const engineOnRef = useRef(engineOn)
-  
-  useEffect(() => {
-    onDriveRef.current = onDrive
-    engineOnRef.current = engineOn
-  }, [onDrive, engineOn])
-  
+
   useEffect(() => {
     if (!isActive) return
 
@@ -763,8 +747,8 @@ export default function FreeRoamSection({
     }
 
     const updateDriveState = () => {
-      if (!engineOnRef.current) return
-      
+      if (!engineOn) return
+
       // Determine throttle direction (W/S or Up/Down arrows)
       let throttle = null
       if (keysPressed.current.has('w') || keysPressed.current.has('W') || keysPressed.current.has('ArrowUp')) {
@@ -772,7 +756,7 @@ export default function FreeRoamSection({
       } else if (keysPressed.current.has('s') || keysPressed.current.has('S') || keysPressed.current.has('ArrowDown')) {
         throttle = 'backward'
       }
-      
+
       // Determine steering direction (A/D or Left/Right arrows)
       let steering = null
       if (keysPressed.current.has('a') || keysPressed.current.has('A') || keysPressed.current.has('ArrowLeft')) {
@@ -780,20 +764,18 @@ export default function FreeRoamSection({
       } else if (keysPressed.current.has('d') || keysPressed.current.has('D') || keysPressed.current.has('ArrowRight')) {
         steering = 'right'
       }
-      
+
       // Update active direction for UI feedback (show primary action)
       setActiveDirection(throttle || steering)
-      
-      const lastState = lastDriveState.current
-      if (lastState.throttle !== throttle || lastState.steering !== steering) {
-        lastState.throttle = throttle
-        lastState.steering = steering
-        onDriveRef.current?.('combined', { throttle, steering })
-      }
+
+      // ═══════════════════════════════════════════════════════════════════════════
+      // COMBINED INPUT: Send BOTH throttle and steering in a SINGLE call
+      // This ensures React state update captures both values atomically
+      // ═══════════════════════════════════════════════════════════════════════════
+      onDrive?.('combined', { throttle, steering })
     }
 
     const onDown = (e) => {
-      if (e.repeat) return; // Prevent OS key-repeat loops!
       if (throttleKeys[e.key] || steeringKeys[e.key]) {
         keysPressed.current.add(e.key)
         updateDriveState()
@@ -813,13 +795,8 @@ export default function FreeRoamSection({
       window.removeEventListener('keydown', onDown)
       window.removeEventListener('keyup', onUp)
       keysPressed.current.clear()
-      // Reset drive state when unmounting/leaving
-      if (lastDriveState.current.throttle || lastDriveState.current.steering) {
-        lastDriveState.current = { throttle: null, steering: null }
-        onDriveRef.current?.('combined', { throttle: null, steering: null })
-      }
     }
-  }, [isActive])
+  }, [isActive, onDrive, engineOn])
 
   const handleDriveStart = (direction) => {
     if (!engineOn) return
@@ -874,7 +851,7 @@ export default function FreeRoamSection({
   )
 
   const controlPanelContent = (
-    <ControlPanel className={isActive || forceActive ? 'active' : ''}>
+    <ControlPanel className={isActive ? 'active' : ''}>
       <ConsoleBody>
         {/* ── Engine Start ── */}
         <PanelSection>
@@ -1074,8 +1051,8 @@ export default function FreeRoamSection({
 
   return (
     <>
-      <Section ref={sectionRef} id={id} style={forceActive ? { display: 'none' } : {}} />
-      {typeof document !== 'undefined' && (isActive || forceActive) && createPortal(controlPanelContent, document.body)}
+      <Section ref={sectionRef} id={id} />
+      {typeof document !== 'undefined' && createPortal(controlPanelContent, document.body)}
     </>
   )
 }

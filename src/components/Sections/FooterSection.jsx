@@ -1,7 +1,7 @@
 import styled from 'styled-components'
 
 const Section = styled.footer`
-  min-height: 40vh;
+  min-height: 80vh;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -192,15 +192,15 @@ export default function FooterSection({ id }) {
           <LicenseNotice>
             <LicenseTitle>Creative Commons License Notice</LicenseTitle>
             <LicenseText>
-              The 3D model used in this project is licensed under Creative Commons. 
-              Modifications have been made to the original model for this interactive experience. 
-              Original creator: ddiaz-design on Sketchfab. This project is a non-commercial 
+              The 3D model used in this project is licensed under Creative Commons.
+              Modifications have been made to the original model for this interactive experience.
+              Original creator: ddiaz-design on Sketchfab. This project is a non-commercial
               portfolio demonstration.
             </LicenseText>
           </LicenseNotice>
 
           <Copyright>
-            © {new Date().getFullYear()} Alfa Romeo Experience Demo. 
+            © {new Date().getFullYear()} Alfa Romeo Experience Demo.
             This is a portfolio project and is not affiliated with Alfa Romeo S.p.A.
           </Copyright>
         </Panel>

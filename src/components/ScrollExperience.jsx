@@ -38,13 +38,15 @@ function FreeRoamCamera({ carPositionRef, driveDirectionRef }) {
   const orbitRef = useRef()
   const smoothedPosition = useRef(new THREE.Vector3())
   const smoothedTarget = useRef(new THREE.Vector3())
-  // Track if we were driving last frame to detect transition
   const wasDrivingRef = useRef(false)
 
-  // Set initial target when component mounts
   useEffect(() => {
     if (carPositionRef?.current) {
-      smoothedTarget.current.set(carPositionRef.current.x, 0.3, carPositionRef.current.z)
+      smoothedTarget.current.set(
+        carPositionRef.current.x,
+        0.3,
+        carPositionRef.current.z
+      )
     }
   }, [carPositionRef])
 
@@ -52,42 +54,70 @@ function FreeRoamCamera({ carPositionRef, driveDirectionRef }) {
     if (!carPositionRef?.current) return
 
     const car = carPositionRef.current
-    const dir = driveDirectionRef?.current || { throttle: null, steering: null }
-    const isDriving = dir.throttle || dir.steering
+    const dir = driveDirectionRef?.current || {
+      throttle: null,
+      steering: null,
+    }
+    const hasInput = dir.throttle || dir.steering
+    const carSpeed = Math.abs(car.speed || 0)
+
+    // ── KEY FIX: Camera follows until the car actually stops ──────
+    // Chase if player is giving input OR car is still moving
+    const speedThreshold = 0.3 // Below this speed, switch to orbit
+    const isDriving = hasInput || carSpeed > speedThreshold
 
     // Dynamically toggle controls without triggering react renders
     if (orbitRef.current) {
       orbitRef.current.enabled = !isDriving
     }
 
-    // Smooth interpolation (frame-rate independent)
-    const lerpSpeed = 3.5 // Smooth tracking
-    const lerpFactor = 1 - Math.exp(-lerpSpeed * delta)
-
-    // Camera follow when driving
     if (isDriving) {
-      const followDistance = 7 // Distance behind car
-      const followHeight = 1.6 // Height above car
-      const followOffset = 0.0 // Center camera instead of offset for racing feel
-      const lookAheadDistance = 5 // Look further ahead for speed feeling
+      // ── CHASE CAM TUNING ──────────────────────────────────────────
+      const followDistance = 9 // Distance behind car
+      const followHeight = 2.2 // Height above car
+      const lookAheadDistance = 5 // How far ahead the camera looks
 
-      // Calculate camera position behind the car
-      const behindX = car.x - Math.sin(car.rotation) * followDistance
-      const behindZ = car.z - Math.cos(car.rotation) * followDistance
+      // ── KEY FIX: Speed-adaptive lerp ──────────────────────────────
+      // Faster car = tighter follow so camera stays behind, not beside
+      const speedRatio = THREE.MathUtils.clamp(carSpeed / 15, 0, 1)
+      const baseLerpSpeed = 2.5 // Gentle at low speed
+      const fastLerpSpeed = 8.0 // Snappy at high speed
+      const lerpSpeed = THREE.MathUtils.lerp(
+        baseLerpSpeed,
+        fastLerpSpeed,
+        speedRatio
+      )
+      const lerpFactor = 1 - Math.exp(-lerpSpeed * delta)
 
-      // Add slight offset based on steering to "look into corners"
-      const steerFactor = dir.steering === 'left' ? 1.0 : (dir.steering === 'right' ? -1.0 : 0)
-      const lookRot = car.rotation + steerFactor * 0.15
+      // ── Camera position: directly behind the car ──────────────────
+      const behindX =
+        car.x - Math.sin(car.rotation) * followDistance
+      const behindZ =
+        car.z - Math.cos(car.rotation) * followDistance
 
-      // Calculate look-at point ahead of the car
-      const aheadX = car.x + Math.sin(lookRot) * lookAheadDistance
-      const aheadZ = car.z + Math.cos(lookRot) * lookAheadDistance
+      // ── Subtle "look into the corner" offset ──────────────────────
+      const steerInput =
+        dir.steering === 'left'
+          ? 0.1
+          : dir.steering === 'right'
+            ? -0.1
+            : 0
+      // Only offset the LOOK target, not the camera position
+      const lookRot = car.rotation + steerInput * 0.1
 
-      // Target positions
-      const targetCamPos = new THREE.Vector3(behindX, followHeight, behindZ)
+      const aheadX =
+        car.x + Math.sin(lookRot) * lookAheadDistance
+      const aheadZ =
+        car.z + Math.cos(lookRot) * lookAheadDistance
+
+      const targetCamPos = new THREE.Vector3(
+        behindX,
+        followHeight,
+        behindZ
+      )
       const targetLookAt = new THREE.Vector3(aheadX, 0.3, aheadZ)
 
-      // Initialize smoothed values gracefully from current camera
+      // ── Smooth start: seed from current camera on first drive frame
       if (!wasDrivingRef.current) {
         smoothedPosition.current.copy(camera.position)
         if (orbitRef.current) {
@@ -95,43 +125,43 @@ function FreeRoamCamera({ carPositionRef, driveDirectionRef }) {
         }
       }
 
-      smoothedPosition.current.lerp(targetCamPos, lerpFactor * 0.8) // Position lerps slightly slower
-      smoothedTarget.current.lerp(targetLookAt, lerpFactor * 1.2) // Target lerps faster
+      // ── POSITION follows tightly (same lerp for both) ────────────
+      smoothedPosition.current.lerp(targetCamPos, lerpFactor)
+      smoothedTarget.current.lerp(targetLookAt, lerpFactor)
 
-      // Apply to camera
       camera.position.copy(smoothedPosition.current)
       camera.lookAt(smoothedTarget.current)
-
     } else {
-      // Photo mode - car isn't driving
+      // ── ORBIT / PHOTO MODE ────────────────────────────────────────
+      const photoLerp = 1 - Math.exp(-3 * delta)
       const targetCenter = new THREE.Vector3(car.x, 0.3, car.z)
 
-      // Smoothly bring target back to car center when stopping
-      smoothedTarget.current.lerp(targetCenter, lerpFactor * 1.5)
+      smoothedTarget.current.lerp(targetCenter, photoLerp)
 
-      // Update OrbitControls target to follow car position
       if (orbitRef.current) {
         orbitRef.current.target.copy(smoothedTarget.current)
         orbitRef.current.update()
       }
+
+      // Keep smoothed cam in sync so chase doesn't snap on resume
+      smoothedPosition.current.copy(camera.position)
     }
 
-    // Update driving state for next frame
     wasDrivingRef.current = !!isDriving
   })
 
   return (
     <OrbitControls
       ref={orbitRef}
-      enablePan={false} // Disable panning to keep focus locked on car
+      enablePan={false}
       enableZoom={true}
       enableRotate={true}
       minDistance={3}
-      maxDistance={20}
+      maxDistance={15}
       minPolarAngle={Math.PI * 0.05}
-      maxPolarAngle={Math.PI * 0.48}
+      maxPolarAngle={Math.PI * 0.52}
       enableDamping={true}
-      dampingFactor={0.05}
+      dampingFactor={0.95}
     />
   )
 }
@@ -188,7 +218,7 @@ function Scene({ scrollProgressRef, dnaMode, carColor, headlightsOn, freeRoamAct
 
   return (
     <>
-      <Environment files="/textures/HdrSkyEvening006_HDR_4K.hdr" background={true} blur={0.1} environmentIntensity={0.5} />
+      <Environment files="/textures/HdrSkyEvening006_HDR_4K.hdr" background={true} blur={0} environmentIntensity={0.9} />
       <Lighting /> {/* Static studio rig; no lights-on dimming here */}
       {/* <Sky /> */} {/* Commented out - procedural sky too heavy, need texture-based solution */}
       <Floor />
@@ -398,6 +428,7 @@ export default function ScrollExperience() {
           <EngineBaySection id="enginebay" onHoodToggle={handleHoodToggle} hoodOpen={hoodOpen} />
           <GallerySection id="gallery" onColorChange={handleColorChange} />
           <ContactSection id="contact" />
+          <FooterSection id="footer" />
           <FreeRoamSection
             id="freeroam"
             onFreeRoamEnter={handleFreeRoamEnter}
@@ -408,7 +439,7 @@ export default function ScrollExperience() {
             onToggleEngine={handleToggleEngine}
             onDrive={handleDrive}
           />
-          <FooterSection id="footer" />
+
         </SectionsContainer>
 
         {(showRacetrack && isLoaded) && (

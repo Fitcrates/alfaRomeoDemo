@@ -1,65 +1,56 @@
-import { useRef, useMemo } from 'react'
+import { useRef } from 'react'
 import { MeshReflectorMaterial, useTexture } from '@react-three/drei'
-import { useThree, extend } from '@react-three/fiber'
+import { useThree } from '@react-three/fiber'
 import * as THREE from 'three'
-
-// Remove RadialFadeMaterial since user wants infinite floor without dark edge
 
 export default function Floor() {
   const floorRef = useRef()
   const { gl } = useThree()
+
   const [asphaltMap, asphaltNormalMap, asphaltRoughnessMap] = useTexture([
-    '/textures/asphalt.png',
-    '/textures/asphalt-normal.png',
-    '/textures/asphalt-roughness.png'
+    '/models/textures/asphalt_02_diff_1k.jpg',
+    '/models/textures/asphalt_02_nor_gl_1k.jpg',
+    '/models/textures/asphalt_02_rough_1k.jpg',
   ])
 
   const mapAnisotropy = Math.min(16, gl.capabilities.getMaxAnisotropy())
 
-  asphaltMap.wrapS = THREE.RepeatWrapping
-  asphaltMap.wrapT = THREE.RepeatWrapping
-  asphaltMap.repeat.set(340, 340) // Increased by 10x for 1000x1000 plane
+    ;[asphaltMap, asphaltNormalMap, asphaltRoughnessMap].forEach((tex) => {
+      tex.wrapS = THREE.RepeatWrapping
+      tex.wrapT = THREE.RepeatWrapping
+      tex.repeat.set(440, 440)
+      tex.anisotropy = mapAnisotropy
+    })
+
   asphaltMap.colorSpace = THREE.SRGBColorSpace
-  asphaltMap.anisotropy = mapAnisotropy
-
-  asphaltNormalMap.wrapS = THREE.RepeatWrapping
-  asphaltNormalMap.wrapT = THREE.RepeatWrapping
-  asphaltNormalMap.repeat.set(340, 340)
-  asphaltNormalMap.anisotropy = mapAnisotropy
-
-  asphaltRoughnessMap.wrapS = THREE.RepeatWrapping
-  asphaltRoughnessMap.wrapT = THREE.RepeatWrapping
-  asphaltRoughnessMap.repeat.set(340, 340)
-  asphaltRoughnessMap.anisotropy = mapAnisotropy
 
   return (
     <group>
-      {/* Main floor */}
       <mesh
         ref={floorRef}
         rotation={[-Math.PI / 2, 0, 0]}
         position={[0, -0.78, 0]}
         receiveShadow
       >
-        <planeGeometry args={[1000, 1000]} />
+        <planeGeometry args={[2000, 2000]} />
         <MeshReflectorMaterial
-          blur={[800, 400]}
+          blur={[400, 200]}
           resolution={512}
-          mixBlur={1.0}
-          mixStrength={0.06}
-          roughness={0.99}
+          mixBlur={0.8}
+          mixStrength={0.4}        // ↑ was 0.06 — controls reflection visibility
+          roughness={0.6}          // ↓ was 0.99 — lower = shinier/more reflective
           depthScale={0.2}
           minDepthThreshold={0.95}
           maxDepthThreshold={1.0}
-          color="#020202"
-          metalness={0.0}
-          mirror={0.02}
+          color="#3f3e3e"           // slightly brighter to see reflections
+          metalness={0.01}           // ↑ was 0.0 — adds metallic reflectivity
+          mirror={0.2}              // ↑ was 0.02 — direct mirror reflection strength
           map={asphaltMap}
           normalMap={asphaltNormalMap}
-          normalScale={[0.02, 0.02]}
+          normalScale={[0.02, 0.02]} // ↓ was 0.02 — less bumps = cleaner reflections
           roughnessMap={asphaltRoughnessMap}
           reflectorOffset={0}
-          envMapIntensity={0.0}
+          envMapIntensity={0.5}     // ↑ was 0.0 — picks up environment reflections
         />
       </mesh>
     </group>
