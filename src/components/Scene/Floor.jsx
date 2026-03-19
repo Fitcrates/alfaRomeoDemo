@@ -3,50 +3,7 @@ import { MeshReflectorMaterial, useTexture } from '@react-three/drei'
 import { useThree, extend } from '@react-three/fiber'
 import * as THREE from 'three'
 
-// Custom shader material for radial gradient fade
-// Fades floor edges to match sky horizon color for seamless blend
-class RadialFadeMaterial extends THREE.ShaderMaterial {
-  constructor() {
-    super({
-      uniforms: {
-        innerRadius: { value: 18.0 },
-        outerRadius: { value: 55.0 },
-        // Match sky horizon color (#0a0a0c) for seamless blend
-        fadeColor: { value: new THREE.Color(0x0a0a0c) }
-      },
-      vertexShader: `
-        varying vec2 vUv;
-        varying vec3 vWorldPosition;
-        void main() {
-          vUv = uv;
-          vec4 worldPosition = modelMatrix * vec4(position, 1.0);
-          vWorldPosition = worldPosition.xyz;
-          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-        }
-      `,
-      fragmentShader: `
-        uniform float innerRadius;
-        uniform float outerRadius;
-        uniform vec3 fadeColor;
-        varying vec2 vUv;
-        varying vec3 vWorldPosition;
-        
-        void main() {
-          float dist = length(vWorldPosition.xz);
-          float fade = smoothstep(innerRadius, outerRadius, dist);
-          // Smoother falloff for natural blend with sky
-          fade = pow(fade, 1.2);
-          gl_FragColor = vec4(fadeColor, fade);
-        }
-      `,
-      transparent: true,
-      side: THREE.DoubleSide,
-      depthWrite: false
-    })
-  }
-}
-
-extend({ RadialFadeMaterial })
+// Remove RadialFadeMaterial since user wants infinite floor without dark edge
 
 export default function Floor() {
   const floorRef = useRef()
@@ -61,18 +18,18 @@ export default function Floor() {
 
   asphaltMap.wrapS = THREE.RepeatWrapping
   asphaltMap.wrapT = THREE.RepeatWrapping
-  asphaltMap.repeat.set(34, 34)
+  asphaltMap.repeat.set(340, 340) // Increased by 10x for 1000x1000 plane
   asphaltMap.colorSpace = THREE.SRGBColorSpace
   asphaltMap.anisotropy = mapAnisotropy
 
   asphaltNormalMap.wrapS = THREE.RepeatWrapping
   asphaltNormalMap.wrapT = THREE.RepeatWrapping
-  asphaltNormalMap.repeat.set(34, 34)
+  asphaltNormalMap.repeat.set(340, 340)
   asphaltNormalMap.anisotropy = mapAnisotropy
 
   asphaltRoughnessMap.wrapS = THREE.RepeatWrapping
   asphaltRoughnessMap.wrapT = THREE.RepeatWrapping
-  asphaltRoughnessMap.repeat.set(34, 34)
+  asphaltRoughnessMap.repeat.set(340, 340)
   asphaltRoughnessMap.anisotropy = mapAnisotropy
 
   return (
@@ -84,7 +41,7 @@ export default function Floor() {
         position={[0, -0.78, 0]}
         receiveShadow
       >
-        <planeGeometry args={[100, 100]} />
+        <planeGeometry args={[1000, 1000]} />
         <MeshReflectorMaterial
           blur={[800, 400]}
           resolution={512}
@@ -104,12 +61,6 @@ export default function Floor() {
           reflectorOffset={0}
           envMapIntensity={0.0}
         />
-      </mesh>
-
-      {/* Radial gradient fade overlay - smooth transition to sky */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.76, 0]}>
-        <planeGeometry args={[120, 120]} />
-        <radialFadeMaterial />
       </mesh>
     </group>
   )

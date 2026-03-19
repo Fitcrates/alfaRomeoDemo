@@ -1,6 +1,6 @@
 import { useRef, useEffect, useState, Suspense, memo } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
-import { useProgress, Environment, ContactShadows, OrbitControls } from '@react-three/drei'
+import { useProgress, Environment, OrbitControls } from '@react-three/drei'
 import { EffectComposer, Bloom, Vignette, Noise } from '@react-three/postprocessing'
 import styled from 'styled-components'
 import gsap from 'gsap'
@@ -10,8 +10,8 @@ import * as THREE from 'three'
 import CarModel from './Scene/CarModel'
 import Lighting from './Scene/Lighting'
 import Floor from './Scene/Floor'
-import Sky from './Scene/Sky'
 import CameraController from './Scene/CameraController'
+import RacetrackScene from './Scene/RacetrackScene'
 import LoadingScreen from './Layout/LoadingScreen'
 import Navbar from './Layout/Navbar'
 
@@ -33,84 +33,105 @@ gsap.registerPlugin(ScrollTrigger)
  * - When driving: follows car from behind (smooth transition)
  * - When not driving: OrbitControls for photo mode
  */
-function FreeRoamCamera({ carPositionRef, driveDirection }) {
+function FreeRoamCamera({ carPositionRef, driveDirectionRef }) {
   const { camera } = useThree()
   const orbitRef = useRef()
   const smoothedPosition = useRef(new THREE.Vector3())
   const smoothedTarget = useRef(new THREE.Vector3())
   // Track if we were driving last frame to detect transition
   const wasDrivingRef = useRef(false)
-  
-  // Check if actively driving
-  const isDriving = driveDirection?.throttle || driveDirection?.steering
-  
+
+  // Set initial target when component mounts
+  useEffect(() => {
+    if (carPositionRef?.current) {
+      smoothedTarget.current.set(carPositionRef.current.x, 0.3, carPositionRef.current.z)
+    }
+  }, [carPositionRef])
+
   useFrame((state, delta) => {
     if (!carPositionRef?.current) return
-    
+
     const car = carPositionRef.current
-    
-    // Update OrbitControls target to follow car position (for photo mode)
-    if (orbitRef.current && !isDriving) {
-      orbitRef.current.target.set(car.x, 0, car.z)
-      orbitRef.current.update()
+    const dir = driveDirectionRef?.current || { throttle: null, steering: null }
+    const isDriving = dir.throttle || dir.steering
+
+    // Dynamically toggle controls without triggering react renders
+    if (orbitRef.current) {
+      orbitRef.current.enabled = !isDriving
     }
-    
+
+    // Smooth interpolation (frame-rate independent)
+    const lerpSpeed = 3.5 // Smooth tracking
+    const lerpFactor = 1 - Math.exp(-lerpSpeed * delta)
+
     // Camera follow when driving
     if (isDriving) {
-      const followDistance = 8 // Distance behind car
-      const followHeight = 1.5 // Height above car
-      const followOffset = 0.5 // Offset to the right
-      const lookAheadDistance = 2 // How far ahead to look
-      
-      // Calculate camera position behind and slightly to the side of the car
-      const behindX = car.x - Math.sin(car.rotation) * followDistance + Math.cos(car.rotation) * followOffset
-      const behindZ = car.z - Math.cos(car.rotation) * followDistance - Math.sin(car.rotation) * followOffset
-      
+      const followDistance = 7 // Distance behind car
+      const followHeight = 1.6 // Height above car
+      const followOffset = 0.0 // Center camera instead of offset for racing feel
+      const lookAheadDistance = 5 // Look further ahead for speed feeling
+
+      // Calculate camera position behind the car
+      const behindX = car.x - Math.sin(car.rotation) * followDistance
+      const behindZ = car.z - Math.cos(car.rotation) * followDistance
+
+      // Add slight offset based on steering to "look into corners"
+      const steerFactor = dir.steering === 'left' ? 1.0 : (dir.steering === 'right' ? -1.0 : 0)
+      const lookRot = car.rotation + steerFactor * 0.15
+
       // Calculate look-at point ahead of the car
-      const aheadX = car.x + Math.sin(car.rotation) * lookAheadDistance
-      const aheadZ = car.z + Math.cos(car.rotation) * lookAheadDistance
-      
+      const aheadX = car.x + Math.sin(lookRot) * lookAheadDistance
+      const aheadZ = car.z + Math.cos(lookRot) * lookAheadDistance
+
       // Target positions
       const targetCamPos = new THREE.Vector3(behindX, followHeight, behindZ)
       const targetLookAt = new THREE.Vector3(aheadX, 0.3, aheadZ)
-      
-      // ─────────────────────────────────────────────────────────────────────────
-      // SMOOTH TRANSITION: When starting to drive, initialize from current camera
-      // position so there's no sudden jump
-      // ─────────────────────────────────────────────────────────────────────────
+
+      // Initialize smoothed values gracefully from current camera
       if (!wasDrivingRef.current) {
-        // Just started driving - initialize smoothed values from current camera
         smoothedPosition.current.copy(camera.position)
-        smoothedTarget.current.set(car.x, 0.3, car.z)
+        if (orbitRef.current) {
+          smoothedTarget.current.copy(orbitRef.current.target)
+        }
       }
-      
-      // Smooth interpolation (frame-rate independent)
-      const lerpSpeed = 2.5 // Slightly slower for smoother feel
-      const lerpFactor = 1 - Math.exp(-lerpSpeed * delta)
-      
-      smoothedPosition.current.lerp(targetCamPos, lerpFactor)
-      smoothedTarget.current.lerp(targetLookAt, lerpFactor)
-      
+
+      smoothedPosition.current.lerp(targetCamPos, lerpFactor * 0.8) // Position lerps slightly slower
+      smoothedTarget.current.lerp(targetLookAt, lerpFactor * 1.2) // Target lerps faster
+
       // Apply to camera
       camera.position.copy(smoothedPosition.current)
       camera.lookAt(smoothedTarget.current)
+
+    } else {
+      // Photo mode - car isn't driving
+      const targetCenter = new THREE.Vector3(car.x, 0.3, car.z)
+
+      // Smoothly bring target back to car center when stopping
+      smoothedTarget.current.lerp(targetCenter, lerpFactor * 1.5)
+
+      // Update OrbitControls target to follow car position
+      if (orbitRef.current) {
+        orbitRef.current.target.copy(smoothedTarget.current)
+        orbitRef.current.update()
+      }
     }
-    
+
     // Update driving state for next frame
-    wasDrivingRef.current = isDriving
+    wasDrivingRef.current = !!isDriving
   })
-  
+
   return (
     <OrbitControls
       ref={orbitRef}
-      enablePan={true}
+      enablePan={false} // Disable panning to keep focus locked on car
       enableZoom={true}
       enableRotate={true}
-      enabled={!isDriving} // Disable when driving
       minDistance={3}
       maxDistance={20}
-      minPolarAngle={Math.PI * 0.1}
-      maxPolarAngle={Math.PI * 0.6}
+      minPolarAngle={Math.PI * 0.05}
+      maxPolarAngle={Math.PI * 0.48}
+      enableDamping={true}
+      dampingFactor={0.05}
     />
   )
 }
@@ -161,87 +182,81 @@ const SectionsContainer = styled.div`
 const CAR_POSITION = [0, -0.8, 0]
 const CAR_ROTATION = Math.PI * 0.05 // Slight angle for visual interest
 
-function Scene({ scrollProgressRef, dnaMode, carColor, headlightsOn, freeRoamActive, hoodOpen, driveDirection }) {
+function Scene({ scrollProgressRef, dnaMode, carColor, headlightsOn, freeRoamActive, hoodOpen, driveDirectionRef }) {
   // Ref to track car position for camera follow
   const carPositionRef = useRef({ x: 0, y: -0.8, z: 0, rotation: 0 })
-  
+
   return (
     <>
-      {/* Fog removed - sky handles horizon blend with gradient */}
-      <Environment preset="sunset" background={false} blur={0.8} environmentIntensity={0.35} /> {/* Keep IBL constant so engine ON does not darken the whole scene */}
+      <Environment files="/textures/HdrSkyEvening006_HDR_4K.hdr" background={true} blur={0.1} environmentIntensity={0.5} />
       <Lighting /> {/* Static studio rig; no lights-on dimming here */}
       {/* <Sky /> */} {/* Commented out - procedural sky too heavy, need texture-based solution */}
       <Floor />
-      <ContactShadows position={[0, -0.82, 0]} opacity={0.35} scale={14} blur={2.2} far={4} resolution={1024} color="#000000" />
-      
+
       {/* Camera Controller - moves camera based on scroll, car stays fixed */}
-      <CameraController 
+      <CameraController
         scrollProgressRef={scrollProgressRef}
         freeRoamActive={freeRoamActive}
       />
-      
-      <CarModel 
+
+      <CarModel
         carPosition={CAR_POSITION}
         carRotation={CAR_ROTATION}
         carColor={carColor}
         headlightsOn={headlightsOn}
         freeRoamActive={freeRoamActive}
         hoodOpen={hoodOpen}
-        driveDirection={driveDirection}
+        driveDirectionRef={driveDirectionRef}
         carPositionRef={carPositionRef}
       />
-      
+
       {/* Camera system for free roam */}
       {freeRoamActive && (
-        <FreeRoamCamera 
-          carPositionRef={carPositionRef} 
-          driveDirection={driveDirection}
+        <FreeRoamCamera
+          carPositionRef={carPositionRef}
+          driveDirectionRef={driveDirectionRef}
         />
       )}
-      
+
       <EffectComposer disableNormalPass multisampling={4}>
-        <Bloom 
-          luminanceThreshold={headlightsOn ? 0.8 : 1.2}
-          luminanceSmoothing={0.3}
-          intensity={headlightsOn ? 1.2 : 0.05}
-          radius={0.6}
+        <Bloom
+          luminanceThreshold={0.9}
+          luminanceSmoothing={0.4}
+          intensity={0.9}
+          radius={0.2}
           mipmapBlur
         />
-        <Vignette eskil={false} offset={0.2} darkness={0.3} />
-        <Noise premultiply opacity={0.012} />
+        <Vignette eskil={false} offset={0.2} darkness={0.7} />
+        <Noise premultiply opacity={0.2} />
       </EffectComposer>
     </>
   )
 }
 
-function LoadingProgress({ onProgress }) {
-  const { progress } = useProgress()
-  
-  useEffect(() => {
-    onProgress(progress)
-  }, [progress, onProgress])
-  
-  return null
-}
+// Removed LoadingProgress component as it causes setState-in-render warning
 
 export default function ScrollExperience() {
   const containerRef = useRef(null)
   const scrollProgressRef = useRef(0)
-  const [loadingProgress, setLoadingProgress] = useState(0)
+  const { progress } = useProgress()
   const [isLoaded, setIsLoaded] = useState(false)
   const [dnaMode, setDnaMode] = useState('dynamic')
   const [carColor, setCarColor] = useState(null)
   const [headlightsOn, setHeadlightsOn] = useState(false)
   const [engineOn, setEngineOn] = useState(false)
   const [freeRoamActive, setFreeRoamActive] = useState(false)
+  const [showRacetrack, setShowRacetrack] = useState(false)
   const [hoodOpen, setHoodOpen] = useState(false)
-  const [driveDirection, setDriveDirection] = useState({ throttle: null, steering: null })
+
+  // Use a ref for drive direction to prevent expensive React re-renders on every keystroke
+  const driveDirectionRef = useRef({ throttle: null, steering: null })
 
   useEffect(() => {
-    if (loadingProgress >= 100) {
-      setTimeout(() => setIsLoaded(true), 500)
+    if (progress >= 100 && !isLoaded) {
+      const timer = setTimeout(() => setIsLoaded(true), 500)
+      return () => clearTimeout(timer)
     }
-  }, [loadingProgress])
+  }, [progress, isLoaded])
 
   useEffect(() => {
     const ctx = gsap.context(() => {
@@ -279,6 +294,20 @@ export default function ScrollExperience() {
     setFreeRoamActive(false)
   }
 
+  const handleToggleRacetrack = () => {
+    setShowRacetrack(prev => {
+      const isEntering = !prev
+      if (isEntering) {
+        document.body.style.overflow = 'hidden'
+        setIsLoaded(false) // Trigger loading screen for the transition
+        setEngineOn(true) // Automatically start the engine for the track
+      } else {
+        document.body.style.overflow = ''
+      }
+      return isEntering
+    })
+  }
+
   const handleHoodToggle = (open) => {
     setHoodOpen(open)
   }
@@ -294,31 +323,31 @@ export default function ScrollExperience() {
   const handleDrive = (type, direction, isActive) => {
     // Only allow driving when engine is on
     if (!engineOn) return
-    
+
     if (type === 'combined') {
-      // Combined input: direction contains { throttle, steering }
-      setDriveDirection(direction)
+      // Direct ref update avoids re-rendering the whole page
+      driveDirectionRef.current = direction
     } else {
-      // Legacy single input (for button controls)
-      setDriveDirection(prev => ({
-        ...prev,
+      // Legacy single input fallback
+      driveDirectionRef.current = {
+        ...driveDirectionRef.current,
         [type]: isActive ? direction : null
-      }))
+      }
     }
   }
 
   return (
     <>
-      <LoadingScreen progress={loadingProgress} isLoaded={isLoaded} />
-      
+      <LoadingScreen progress={progress} isLoaded={isLoaded} />
+
       <Container ref={containerRef}>
-        <Navbar />
-        
-        <CanvasContainer $freeRoamActive={freeRoamActive}>
+        <Navbar onTakeToRacetrack={handleToggleRacetrack} inRacetrack={showRacetrack} />
+
+        <CanvasContainer $freeRoamActive={freeRoamActive || showRacetrack}>
           <Canvas
             camera={{ position: [0, 1, 8], fov: 45 }}
             dpr={[1, 2]}
-            gl={{ 
+            gl={{
               antialias: true,
               alpha: false,
               powerPreference: 'high-performance',
@@ -334,23 +363,33 @@ export default function ScrollExperience() {
             shadows={{ type: THREE.PCFShadowMap }}
             frameloop="always"
           >
-            <color attach="background" args={['#0a0a0a']} />
+            {/* Soft atmospheric fog to blend the massive infinite floor into the evening HDRI horizon */}
+            <fog attach="fog" args={['#201c18', 40, 400]} />
+
+            {/* Use the sky environment as the background instead of forcing black void */}
             <Suspense fallback={null}>
-              <LoadingProgress onProgress={setLoadingProgress} />
-              <Scene 
-                scrollProgressRef={scrollProgressRef}
-                dnaMode={dnaMode}
-                carColor={carColor}
-                headlightsOn={headlightsOn}
-                freeRoamActive={freeRoamActive}
-                hoodOpen={hoodOpen}
-                driveDirection={driveDirection}
-              />
+              {showRacetrack ? (
+                <RacetrackScene
+                  carColor={carColor}
+                  headlightsOn={headlightsOn}
+                  driveDirectionRef={driveDirectionRef}
+                />
+              ) : (
+                <Scene
+                  scrollProgressRef={scrollProgressRef}
+                  dnaMode={dnaMode}
+                  carColor={carColor}
+                  headlightsOn={headlightsOn}
+                  freeRoamActive={freeRoamActive}
+                  hoodOpen={hoodOpen}
+                  driveDirectionRef={driveDirectionRef}
+                />
+              )}
             </Suspense>
           </Canvas>
         </CanvasContainer>
-        
-        <SectionsContainer>
+
+        <SectionsContainer style={{ display: showRacetrack ? 'none' : 'block' }}>
           <HeroSection id="hero" />
           <EngineSection id="engine" scrollProgressRef={scrollProgressRef} onEngineStart={handleEngineStart} headlightsOn={headlightsOn} />
           <SuspensionSection id="suspension" onModeChange={handleModeChange} />
@@ -358,9 +397,9 @@ export default function ScrollExperience() {
           <InteriorSection id="interior" />
           <EngineBaySection id="enginebay" onHoodToggle={handleHoodToggle} hoodOpen={hoodOpen} />
           <GallerySection id="gallery" onColorChange={handleColorChange} />
-          <FreeRoamSection 
-            id="freeroam" 
-            onFreeRoamEnter={handleFreeRoamEnter} 
+          <FreeRoamSection
+            id="freeroam"
+            onFreeRoamEnter={handleFreeRoamEnter}
             onFreeRoamLeave={handleFreeRoamLeave}
             headlightsOn={headlightsOn}
             engineOn={engineOn}
@@ -371,6 +410,20 @@ export default function ScrollExperience() {
           <ContactSection id="contact" />
           <FooterSection id="footer" />
         </SectionsContainer>
+
+        {(showRacetrack && isLoaded) && (
+          <FreeRoamSection
+            id="racetrack-controls"
+            headlightsOn={headlightsOn}
+            engineOn={engineOn} // Use the actual state
+            onToggleLights={handleToggleLights}
+            onToggleEngine={handleToggleEngine} // Allow user to turn it off on the track
+            onDrive={handleDrive}
+            onFreeRoamEnter={() => { }}
+            onFreeRoamLeave={() => { }}
+            forceActive={true}
+          />
+        )}
       </Container>
     </>
   )

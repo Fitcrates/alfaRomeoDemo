@@ -1,5 +1,5 @@
 import { useRef, useEffect } from 'react'
-import { useGLTF } from '@react-three/drei'
+import { useGLTF, ContactShadows } from '@react-three/drei'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 
@@ -16,14 +16,14 @@ import * as THREE from 'three'
  * @param {boolean} hoodOpen - Whether hood transparency is active
  * @param {string} driveDirection - Drive direction in free roam ('forward', 'backward', 'left', 'right')
  */
-export default function CarModel({ 
+export default function CarModel({
   carPosition = [0, -0.8, 0],
   carRotation = 0,
   carColor = null,
   headlightsOn = false,
   freeRoamActive = false,
   hoodOpen = false,
-  driveDirection = null,
+  driveDirectionRef = null,
   carPositionRef = null // Ref to share car position with camera
 }) {
   const groupRef = useRef()
@@ -56,30 +56,30 @@ export default function CarModel({
   const frontWheelsRef = useRef([]) // Front wheels (for steering)
   const rearWheelsRef = useRef([]) // Rear wheels
   const wheelRotationRef = useRef(0)
-  
+
   // Car physics state for realistic steering
   const carPhysicsRef = useRef({
     speed: 0,
     steeringAngle: 0, // Current wheel angle in radians
     targetSteering: 0, // Target steering from input
   })
-  
+
   // Car configuration (Giulia wheelbase ~2.82m)
   const CAR_CONFIG = {
     wheelbase: 2.82, // Distance between front and rear axles
     maxSteeringAngle: Math.PI / 5, // ~36 degrees max wheel turn
-    maxSpeed: 4, // Max forward speed
-    acceleration: 3,
-    braking: 5,
-    friction: 2,
-    steeringSpeed: 3.5, // How fast wheels turn
-    steeringReturnSpeed: 4.0, // How fast wheels center when no input
+    maxSpeed: 20, // Increased for a more progressive and racing feel
+    acceleration: 4,
+    braking: 12,
+    friction: 5,
+    steeringSpeed: 1.5, // Snappier wheels
+    steeringReturnSpeed: 2.0,
   }
-  
+
   const FLOOR_Y = -0.78
   const { scene, animations } = useGLTF('/models/giulia.glb')
-  
-  
+
+
   // Debug: Check for animations and openable parts
   useEffect(() => {
     if (process.env.NODE_ENV === 'development' && scene) {
@@ -94,7 +94,7 @@ export default function CarModel({
       console.log('=== OPENABLE PARTS ===', openableParts)
     }
   }, [scene, animations])
-  
+
   // Store current values for smooth interpolation (used in free roam)
   const currentValues = useRef({
     rotationY: carRotation,
@@ -102,20 +102,20 @@ export default function CarModel({
     positionY: carPosition[1],
     positionZ: carPosition[2]
   })
-  
+
   // Base position/rotation refs for resetting after free roam
   const basePositionRef = useRef(carPosition)
   const baseRotationRef = useRef(carRotation)
-  
+
   // Update base refs when props change
   useEffect(() => {
     basePositionRef.current = carPosition
     baseRotationRef.current = carRotation
   }, [carPosition, carRotation])
-  
+
   useEffect(() => {
     if (!scene || !modelRef.current) return
-    
+
     // Clear previous
     while (modelRef.current.children.length > 0) {
       modelRef.current.remove(modelRef.current.children[0])
@@ -123,36 +123,37 @@ export default function CarModel({
     lightsRef.current = { front: [], rear: [], emissiveMaterials: [] }
     hoodMaterialsRef.current = []
     wheelsRef.current = []
-    
+
     const model = scene.clone(true)
-    
+
     // Setup materials and find exactly the light meshes
     model.traverse((child) => {
       if (child.isMesh) {
         const materialName = child.material?.name || ''
         const meshName = child.name || ''
         const isGlassLike = /glass|window|windshield/i.test(`${materialName} ${meshName}`)
-        
+
         // Detect wheel meshes by material name and position
         if (materialName.includes('Wheel') || materialName.includes('wheel')) {
           // Get the wheel's position in model-local space (not world space)
           // This is stable regardless of camera or car rotation
           const localPos = child.position.clone()
-          
+
           // Walk up the hierarchy to get position relative to model root
           let parent = child.parent
           while (parent && parent !== model) {
             localPos.applyMatrix4(parent.matrix)
             parent = parent.parent
           }
-          
+
           // Store wheel metadata for later use
           child.userData.isFrontWheel = localPos.z > 0 // Front wheels have positive Z in model space
           child.userData.isLeftWheel = localPos.x < 0 // Left wheels have negative X
-          child.userData.initialRotation = child.rotation.clone()
-          
+          // Store pure quaternion to fix rotation axis errors when combining local rolling + parent steering
+          child.userData.initialQuaternion = child.quaternion.clone()
+
           wheelsRef.current.push(child)
-          
+
           // Debug log wheel positions
           if (process.env.NODE_ENV === 'development') {
             console.log(`Wheel: ${meshName}, localZ: ${localPos.z.toFixed(2)}, isFront: ${child.userData.isFrontWheel}, isLeft: ${child.userData.isLeftWheel}`)
@@ -161,21 +162,21 @@ export default function CarModel({
 
         child.castShadow = !isGlassLike
         child.receiveShadow = !isGlassLike
-        
+
         if (child.material) {
           child.material = child.material.clone()
-          
+
           // CRITICAL FIX: Use DoubleSide for ALL materials to prevent interior disappearing
           // This matches Sketchfab/Blender default behavior
           child.material.side = THREE.DoubleSide
-          
+
           // Fix transparent materials render order
           if (child.material.transparent) {
             child.material.depthWrite = true
           }
-          
+
           const matName = child.material.name
-          
+
           // FIX: Handle lamp glass materials specially
           // These use transmission in the original model but Three.js needs explicit configuration
           if (matName === 'red_glass') {
@@ -220,18 +221,18 @@ export default function CarModel({
             child.material.depthWrite = false
             child.renderOrder = 10
           }
-          
+
           // FIX: Ensure interior materials render properly
           // Interior materials marked as transparent with opacity 1 need proper handling
           if (matName === 'QuadrifoglioAlfaRomeo_GiuliaQuadrifoglio_2017InteriorA_Material1' ||
-              matName === 'color_Int') {
+            matName === 'color_Int') {
             // These are solid interior materials, not actually transparent
             child.material.transparent = false
             child.material.opacity = 1
             child.material.depthWrite = true
             child.material.envMapIntensity = 1.0
           }
-          
+
           // Target exactly the materials that represent lights
           // Keep original material settings - we'll use lens flares instead of shader glow
           if (
@@ -247,7 +248,7 @@ export default function CarModel({
               child.material.emissive.setHex(0x000000)
               child.material.emissiveIntensity = 0
             }
-            
+
             // Check if this is a hood/bonnet mesh by name
             const meshNameLower = meshName.toLowerCase()
             if (meshNameLower.includes('hood') || meshNameLower.includes('bonnet') || meshNameLower.includes('cofano')) {
@@ -257,7 +258,7 @@ export default function CarModel({
               hoodMaterialsRef.current.push({ mesh: child, material: child.material })
               console.log('[Hood Mesh] Found by name:', meshName)
             }
-            
+
             // Also check paint material for body - we'll make it semi-transparent
             if (matName.includes('Paint_Material')) {
               child.material.transparent = true
@@ -274,41 +275,41 @@ export default function CarModel({
         }
       }
     })
-    
+
     // Update matrices
     model.updateMatrixWorld(true)
-    
+
     // Get bounding box
     const box = new THREE.Box3().setFromObject(model)
     const size = new THREE.Vector3()
     const center = new THREE.Vector3()
     box.getSize(size)
     box.getCenter(center)
-    
+
     // Calculate scale - 30% bigger (was 4, now ~5.2)
     const maxDim = Math.max(size.x, size.y, size.z)
     const scale = maxDim > 0 ? 5.2 / maxDim : 1
-    
+
     // Create wrapper group for transformations
     const wrapper = new THREE.Group()
     wrapper.add(model)
-    
+
     // Scale the wrapper
     wrapper.scale.setScalar(scale)
-    
+
     // Position to center (accounting for scale)
     wrapper.position.set(
       -center.x * scale,
       -box.min.y * scale,
       -center.z * scale
     )
-    
+
     modelRef.current.add(wrapper)
-    
+
     // Store scale for light positioning
     lightsRef.current.scale = scale
     lightsRef.current.wrapper = wrapper
-    
+
   }, [scene])
 
   // Store hoodOpen in ref for useFrame access
@@ -347,22 +348,22 @@ export default function CarModel({
   // Color change effect
   useEffect(() => {
     if (!carColor || !modelRef.current) return
-    
+
     modelRef.current.traverse((child) => {
       if (child.isMesh && child.material) {
         const name = (child.material.name || child.name || '').toLowerCase()
-        
+
         // Handle car body paint specifically
         if (name.includes('body') || name.includes('paint') || name.includes('car')) {
           if (child.material.color) {
             child.material.color.set(carColor)
           }
-          
+
           // Ensure car body paint materials DO NOT exceed 1.0 color values
           // by making sure they use tone mapping, while light emissive
           // materials do not, so we can separate them by luminance threshold
           child.material.toneMapped = true
-          
+
           // Force emissive to black so the body NEVER glows
           if (child.material.emissive) {
             child.material.emissive.setHex(0x000000)
@@ -376,13 +377,13 @@ export default function CarModel({
   // Smooth animation - use delta-based lerp for frame-rate independence
   useFrame((state, delta) => {
     if (!groupRef.current) return
-    
+
     const current = currentValues.current
-    
+
     // Frame-rate independent lerp factor
     const lerpSpeed = 6 // Smooth but responsive
     const lerpFactor = 1 - Math.exp(-lerpSpeed * delta)
-    
+
     // In normal mode, car stays at fixed position
     // In free roam, car can be moved by drive controls
     if (!freeRoamActive) {
@@ -437,36 +438,29 @@ export default function CarModel({
         item.material.opacity = newOpacity
       }
     })
-    
+
     // Realistic car physics with bicycle model steering
     if (wheelsRef.current.length > 0 && freeRoamActive) {
       const group = groupRef.current
       const physics = carPhysicsRef.current
       const config = CAR_CONFIG
-      
+
       if (group) {
         // --- Input Processing (now supports combined throttle + steering) ---
         let throttleInput = 0
         let steeringInput = 0
-        
-        // Handle both old single-direction format and new combined format
-        if (typeof driveDirection === 'object' && driveDirection !== null) {
-          // New combined format: { throttle: 'forward'|'backward'|null, steering: 'left'|'right'|null }
-          if (driveDirection.throttle === 'forward') throttleInput = 1
-          else if (driveDirection.throttle === 'backward') throttleInput = -1
-          if (driveDirection.steering === 'left') steeringInput = 1
-          else if (driveDirection.steering === 'right') steeringInput = -1
-        } else {
-          // Legacy single-direction format (fallback)
-          if (driveDirection === 'forward') throttleInput = 1
-          else if (driveDirection === 'backward') throttleInput = -1
-          if (driveDirection === 'left') steeringInput = 1
-          else if (driveDirection === 'right') steeringInput = -1
-        }
-        
+
+        const driveDir = driveDirectionRef?.current || { throttle: null, steering: null }
+
+        if (driveDir.throttle === 'forward') throttleInput = 1
+        else if (driveDir.throttle === 'backward') throttleInput = -1
+
+        if (driveDir.steering === 'left') steeringInput = 1
+        else if (driveDir.steering === 'right') steeringInput = -1
+
         // --- Steering (smooth interpolation) ---
         const targetSteering = steeringInput * config.maxSteeringAngle
-        
+
         if (Math.abs(steeringInput) > 0.01) {
           // Player is actively steering - interpolate towards target
           physics.steeringAngle = THREE.MathUtils.lerp(
@@ -482,14 +476,14 @@ export default function CarModel({
             1 - Math.exp(-config.steeringReturnSpeed * delta)
           )
         }
-        
+
         // Clamp steering angle
         physics.steeringAngle = THREE.MathUtils.clamp(
           physics.steeringAngle,
           -config.maxSteeringAngle,
           config.maxSteeringAngle
         )
-        
+
         // --- Speed / Throttle ---
         if (throttleInput > 0) {
           physics.speed += config.acceleration * throttleInput * delta
@@ -504,38 +498,38 @@ export default function CarModel({
             physics.speed -= Math.sign(physics.speed) * frictionForce
           }
         }
-        
+
         // Clamp speed
         physics.speed = THREE.MathUtils.clamp(
           physics.speed,
           -config.maxSpeed * 0.4, // Reverse is slower
           config.maxSpeed
         )
-        
+
         // --- Bicycle Model Movement (arc, not tank turn) ---
         if (Math.abs(physics.speed) > 0.001) {
           if (Math.abs(physics.steeringAngle) > 0.001) {
             // Calculate turn radius from rear axle
             const turnRadius = config.wheelbase / Math.tan(physics.steeringAngle)
-            
+
             // Angular velocity = speed / turnRadius
             const angularVelocity = physics.speed / turnRadius
-            
+
             // Update car heading (rotation)
             group.rotation.y += angularVelocity * delta
           }
-          
+
           // Move car forward in the direction it's facing
           const dx = Math.sin(group.rotation.y) * physics.speed * delta
           const dz = Math.cos(group.rotation.y) * physics.speed * delta
-          
+
           group.position.x += dx
           group.position.z += dz
         }
-        
+
         // Keep car on the floor
         group.position.y = -0.8
-        
+
         // Export car position for camera follow
         if (carPositionRef) {
           carPositionRef.current = {
@@ -545,7 +539,7 @@ export default function CarModel({
             rotation: group.rotation.y
           }
         }
-        
+
         // ═══════════════════════════════════════════════════════════════════════════
         // WHEEL VISUALS - Ackermann-like steering geometry
         // ═══════════════════════════════════════════════════════════════════════════
@@ -557,63 +551,63 @@ export default function CarModel({
         // We need to apply rotations in the correct order and on correct axes.
         // The initial rotation of the wheel mesh is stored and we add to it.
         // ═══════════════════════════════════════════════════════════════════════════
-        
+
         const wheelRadius = 0.34 // ~0.34m for Giulia wheels
         const spinDelta = (physics.speed * delta) / wheelRadius
         wheelRotationRef.current += spinDelta
-        
+
         // Ackermann steering: inner wheel turns more than outer wheel
         const wheelBase = 2.82 // meters
         const trackWidth = 1.6 // meters (approximate)
-        
+
         // Calculate inner/outer wheel angles for Ackermann geometry
         let innerAngle = physics.steeringAngle
         let outerAngle = physics.steeringAngle
-        
+
         if (Math.abs(physics.steeringAngle) > 0.01) {
           // Calculate turn radius from steering angle
           const turnRadius = wheelBase / Math.tan(Math.abs(physics.steeringAngle))
-          
+
           // Inner wheel turns more, outer wheel turns less
           innerAngle = Math.atan(wheelBase / (turnRadius - trackWidth / 2))
           outerAngle = Math.atan(wheelBase / (turnRadius + trackWidth / 2))
-          
+
           // Apply sign based on steering direction
           if (physics.steeringAngle < 0) {
             innerAngle = -innerAngle
             outerAngle = -outerAngle
           }
         }
-        
+
         wheelsRef.current.forEach((wheel) => {
           const isLeftWheel = wheel.userData.isLeftWheel
           const isFrontWheel = wheel.userData.isFrontWheel
-          const initialRot = wheel.userData.initialRotation
-          
-          if (!initialRot) return
-          
-          // Start from initial rotation
-          wheel.rotation.copy(initialRot)
-          
-          // Apply rolling rotation (around the wheel's axle - typically X in local space)
-          // Left wheels spin opposite direction when moving forward
-          const spinRotation = isLeftWheel ? -wheelRotationRef.current : wheelRotationRef.current
-          wheel.rotation.x = initialRot.x + spinRotation
-          
+          const initialQuat = wheel.userData.initialQuaternion
+
+          if (!initialQuat) return
+
+          // Start from initial quaternion
+          const q = initialQuat.clone()
+
           // Apply steering to front wheels only
           if (isFrontWheel) {
             // Determine if this wheel is inner or outer based on turn direction
-            // Turning left (positive steering): left wheel is inner, right is outer
-            // Turning right (negative steering): right wheel is inner, left is outer
             const turningLeft = physics.steeringAngle > 0
             const isInnerWheel = (turningLeft && isLeftWheel) || (!turningLeft && !isLeftWheel)
-            
+
             const steerAngle = isInnerWheel ? innerAngle : outerAngle
-            
-            // Apply steering rotation around Z axis (vertical in wheel's local space)
-            // This rotates the wheel to point in the turn direction
-            wheel.rotation.z = initialRot.z + steerAngle
+
+            // Steer by rotating around Y axis (in parent space)
+            const steerQuat = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), steerAngle)
+            q.premultiply(steerQuat)
           }
+
+          // Apply rolling rotation (around the wheel's local axle - typically X in model space)
+          const spinRotation = isLeftWheel ? -wheelRotationRef.current : wheelRotationRef.current
+          const rollQuat = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), spinRotation)
+          q.multiply(rollQuat)
+
+          wheel.quaternion.copy(q)
         })
       }
     } else if (headlightsOn && wheelsRef.current.length > 0) {
@@ -621,24 +615,26 @@ export default function CarModel({
       wheelRotationRef.current += delta * 0.5
       wheelsRef.current.forEach((wheel) => {
         const isLeftWheel = wheel.userData.isLeftWheel
-        const initialRot = wheel.userData.initialRotation
-        if (!initialRot) return
-        
-        // Reset to initial rotation and apply only rolling
-        wheel.rotation.copy(initialRot)
+        const initialQuat = wheel.userData.initialQuaternion
+        if (!initialQuat) return
+
+        const q = initialQuat.clone()
         const spinRotation = isLeftWheel ? -wheelRotationRef.current : wheelRotationRef.current
-        wheel.rotation.x = initialRot.x + spinRotation
+        const rollQuat = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), spinRotation)
+        q.multiply(rollQuat)
+
+        wheel.quaternion.copy(q)
       })
     } else {
       // Reset wheels to initial rotation when not active
       wheelsRef.current.forEach((wheel) => {
-        const initialRot = wheel.userData.initialRotation
-        if (initialRot) {
-          wheel.rotation.copy(initialRot)
+        const initialQuat = wheel.userData.initialQuaternion
+        if (initialQuat) {
+          wheel.quaternion.copy(initialQuat)
         }
       })
     }
-    
+
     // Ensure car stays on floor in free roam mode
     if (freeRoamActive && groupRef.current) {
       groupRef.current.position.y = -0.8
@@ -683,7 +679,7 @@ export default function CarModel({
       leftRearSpillTargetRef.current.updateMatrixWorld()
       rightRearSpillTargetRef.current.updateMatrixWorld()
     }
-    
+
     // Apply position and rotation
     // In free roam, position is updated by drive controls above
     // In normal mode, car stays at fixed position
@@ -697,11 +693,12 @@ export default function CarModel({
     e.stopPropagation()
     const meshName = e.object.name
     const matName = e.object.material?.name || 'No Material'
-   
+
   }
 
   return (
     <group ref={groupRef}>
+      <ContactShadows frames={1} position={[0, -0.02, 0]} opacity={0.65} scale={18} blur={2.0} far={4} resolution={1024} color="#000000" />
       <group ref={vehicleLightsRef}>
         <object3D ref={leftHeadlightTargetRef} position={[-1.18, -1.05, 14]} />
         <object3D ref={rightHeadlightTargetRef} position={[1.18, -1.05, 14]} />
@@ -819,7 +816,7 @@ export default function CarModel({
             opacity={0}
           />
         </mesh>
-        
+
         {/* Front Right Headlight */}
         <mesh ref={rightLensFlareRef} position={[0.78, 0.72, 2.28]}>
           <sphereGeometry args={[0.03, 8, 8]} />
@@ -832,7 +829,7 @@ export default function CarModel({
             opacity={0}
           />
         </mesh>
-        
+
         {/* Rear Left Taillight - LED strip shape (wider, flatter) */}
         {/* rotation: [x-tilt, y-rotation, z-roll] in radians */}
         <mesh ref={leftRearFlareRef} position={[-0.54, 1, -2.45]} rotation={[0, 0.39, -0.02]}>
@@ -846,7 +843,7 @@ export default function CarModel({
             opacity={0}
           />
         </mesh>
-        
+
         {/* Rear Right Taillight - LED strip shape (wider, flatter) */}
         <mesh ref={rightRearFlareRef} position={[0.54, 1, -2.45]} rotation={[0, -0.39, 0.02]}>
           <boxGeometry args={[0.30, 0.01, 0.02]} />
@@ -859,7 +856,7 @@ export default function CarModel({
             opacity={0}
           />
         </mesh>
-        
+
         {/* Rear Left Taillight - Curved side strip */}
         <mesh ref={leftRearFlare2Ref} position={[-0.80, 1, -2.278]} rotation={[0, 0.72, 0]}>
           <boxGeometry args={[0.27, 0.01, 0.02]} />
@@ -872,7 +869,7 @@ export default function CarModel({
             opacity={0}
           />
         </mesh>
-        
+
         {/* Rear Right Taillight - Curved side strip */}
         <mesh ref={rightRearFlare2Ref} position={[0.80, 1, -2.278]} rotation={[0, -0.72, 0]}>
           <boxGeometry args={[0.27, 0.01, 0.02]} />

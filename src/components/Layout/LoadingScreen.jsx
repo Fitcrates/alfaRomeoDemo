@@ -115,6 +115,9 @@ export default function LoadingScreen({ progress = 0, isLoaded = false }) {
         setIsHidden(true)
       }, 1100)
       return () => clearTimeout(timer)
+    } else {
+      setShouldFadeOut(false)
+      setIsHidden(false)
     }
   }, [isLoaded])
 
@@ -145,7 +148,7 @@ export default function LoadingScreen({ progress = 0, isLoaded = false }) {
       </ProgressContainer>
       
       <ProgressText>
-        {progress < 100 ? 'Loading Experience...' : 'Ready'}
+        {progress < 100 ? `Loading Experience... ${Math.round(progress)}%` : 'Ready'}
       </ProgressText>
     </LoadingContainer>
   )

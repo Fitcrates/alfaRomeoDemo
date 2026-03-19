@@ -172,7 +172,7 @@ export default function FooterSection({ id }) {
           <CreditSection>
             <CreditLabel>Developed By</CreditLabel>
             <CreditLink href="https://appcrates.pl" target="_blank" rel="noopener noreferrer">
-              Arkadiusz Wawrzyniak
+              Arkadiusz Wawrzyniak from appcrates.pl
             </CreditLink>
             <CreditText>
               Portfolio demo project showcasing interactive 3D web experiences

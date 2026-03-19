@@ -13,9 +13,9 @@ const Nav = styled.nav`
   justify-content: space-between;
   align-items: center;
   transition: all 0.3s ease;
-  background: ${props => props.$scrolled 
-    ? 'linear-gradient(180deg, rgba(10, 10, 10, 0.95) 0%, rgba(10, 10, 10, 0) 100%)'
-    : 'transparent'
+  background: ${props => props.$scrolled
+    ? 'linear-gradient(180deg, rgba(10, 10, 10, 0.95) 50%, rgba(10, 10, 10, 0) 100%)'
+    : 'linear-gradient(180deg, rgba(10, 10, 10, 0.95) 50%, rgba(10, 10, 10, 0) 100%)'
   };
   
   @media (max-width: 768px) {
@@ -166,14 +166,14 @@ const MobileMenuButton = styled.button`
   }
 `
 
-export default function Navbar() {
+export default function Navbar({ onTakeToRacetrack, inRacetrack }) {
   const [scrolled, setScrolled] = useState(false)
 
   useEffect(() => {
     const handleScroll = () => {
       setScrolled(window.scrollY > 50)
     }
-    
+
     window.addEventListener('scroll', handleScroll)
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
@@ -191,7 +191,7 @@ export default function Navbar() {
         <LogoIcon src={AlfaRomeoLogo} alt="Alfa Romeo" />
         <LogoText>Alfa Romeo</LogoText>
       </Logo>
-      
+
       <NavLinks>
         <NavLink onClick={() => scrollToSection('engine')}>Performance</NavLink>
         <NavLink onClick={() => scrollToSection('suspension')}>Dynamics</NavLink>
@@ -201,11 +201,22 @@ export default function Navbar() {
         <NavLink onClick={() => scrollToSection('freeroam')}>Free Roam</NavLink>
         <NavLink onClick={() => scrollToSection('footer')}>Credits</NavLink>
       </NavLinks>
-      
-      <CTAButton onClick={() => scrollToSection('contact')}>
-        Test Drive
-      </CTAButton>
-      
+
+      {inRacetrack ? (
+        <CTAButton onClick={onTakeToRacetrack} style={{ background: 'rgba(192, 57, 43, 0.2)' }}>
+          Return to Showcase
+        </CTAButton>
+      ) : (
+        <div style={{ display: 'flex', gap: '1rem' }}>
+          <CTAButton onClick={onTakeToRacetrack}>
+            Track Mode
+          </CTAButton>
+          <CTAButton onClick={() => scrollToSection('contact')}>
+            Test Drive
+          </CTAButton>
+        </div>
+      )}
+
       <MobileMenuButton aria-label="Menu">
         <span />
         <span />

@@ -589,9 +589,10 @@ export default function FreeRoamSection({
   onToggleLights,
   onToggleEngine,
   onDrive,
+  forceActive = false
 }) {
   const sectionRef = useRef(null)
-  const [isActive, setIsActive] = useState(false)
+  const [isActive, setIsActive] = useState(forceActive)
   const [activeDirection, setActiveDirection] = useState(null)
   
   // ═══════════════════════════════════════════════════════════════════════════
@@ -713,6 +714,11 @@ export default function FreeRoamSection({
   }, [engineOn])
 
   useEffect(() => {
+    if (forceActive) {
+      setIsActive(true)
+      return
+    }
+
     const section = sectionRef.current
     if (!section) return
 
@@ -729,10 +735,20 @@ export default function FreeRoamSection({
     })
 
     return () => ctx.revert()
-  }, [onFreeRoamEnter, onFreeRoamLeave])
+  }, [onFreeRoamEnter, onFreeRoamLeave, forceActive])
 
   /* Keyboard support - tracks multiple keys for combined movement */
   const keysPressed = useRef(new Set())
+  const lastDriveState = useRef({ throttle: null, steering: null })
+  
+  // Use refs for callbacks to prevent effect re-runs
+  const onDriveRef = useRef(onDrive)
+  const engineOnRef = useRef(engineOn)
+  
+  useEffect(() => {
+    onDriveRef.current = onDrive
+    engineOnRef.current = engineOn
+  }, [onDrive, engineOn])
   
   useEffect(() => {
     if (!isActive) return
@@ -747,7 +763,7 @@ export default function FreeRoamSection({
     }
 
     const updateDriveState = () => {
-      if (!engineOn) return
+      if (!engineOnRef.current) return
       
       // Determine throttle direction (W/S or Up/Down arrows)
       let throttle = null
@@ -768,14 +784,16 @@ export default function FreeRoamSection({
       // Update active direction for UI feedback (show primary action)
       setActiveDirection(throttle || steering)
       
-      // ═══════════════════════════════════════════════════════════════════════════
-      // COMBINED INPUT: Send BOTH throttle and steering in a SINGLE call
-      // This ensures React state update captures both values atomically
-      // ═══════════════════════════════════════════════════════════════════════════
-      onDrive?.('combined', { throttle, steering })
+      const lastState = lastDriveState.current
+      if (lastState.throttle !== throttle || lastState.steering !== steering) {
+        lastState.throttle = throttle
+        lastState.steering = steering
+        onDriveRef.current?.('combined', { throttle, steering })
+      }
     }
 
     const onDown = (e) => {
+      if (e.repeat) return; // Prevent OS key-repeat loops!
       if (throttleKeys[e.key] || steeringKeys[e.key]) {
         keysPressed.current.add(e.key)
         updateDriveState()
@@ -795,8 +813,13 @@ export default function FreeRoamSection({
       window.removeEventListener('keydown', onDown)
       window.removeEventListener('keyup', onUp)
       keysPressed.current.clear()
+      // Reset drive state when unmounting/leaving
+      if (lastDriveState.current.throttle || lastDriveState.current.steering) {
+        lastDriveState.current = { throttle: null, steering: null }
+        onDriveRef.current?.('combined', { throttle: null, steering: null })
+      }
     }
-  }, [isActive, onDrive, engineOn])
+  }, [isActive])
 
   const handleDriveStart = (direction) => {
     if (!engineOn) return
@@ -851,7 +874,7 @@ export default function FreeRoamSection({
   )
 
   const controlPanelContent = (
-    <ControlPanel className={isActive ? 'active' : ''}>
+    <ControlPanel className={isActive || forceActive ? 'active' : ''}>
       <ConsoleBody>
         {/* ── Engine Start ── */}
         <PanelSection>
@@ -1051,8 +1074,8 @@ export default function FreeRoamSection({
 
   return (
     <>
-      <Section ref={sectionRef} id={id} />
-      {typeof document !== 'undefined' && createPortal(controlPanelContent, document.body)}
+      <Section ref={sectionRef} id={id} style={forceActive ? { display: 'none' } : {}} />
+      {typeof document !== 'undefined' && (isActive || forceActive) && createPortal(controlPanelContent, document.body)}
     </>
   )
 }
