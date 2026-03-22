@@ -17,7 +17,7 @@ const Section = styled.section`
 
 /* Top half — transparent, car shows through from fixed Canvas */
 const CarViewport = styled.div`
-  flex: 0 0 65%;
+  flex: 0 0 60%;
   pointer-events: none;
   position: relative;
 
@@ -40,7 +40,7 @@ const CarViewport = styled.div`
 
 /* Bottom half — content panel */
 const PanelContainer = styled.div`
-  flex: 0 0 35%;
+  flex: 0 0 40%;
   position: relative;
   background: linear-gradient(
     180deg,
@@ -184,9 +184,9 @@ const Dot = styled.div`
   height: 6px;
   border-radius: 50%;
   background: ${(p) =>
-        p.$active
-            ? "rgba(192, 57, 43, 0.9)"
-            : "rgba(255, 255, 255, 0.15)"};
+    p.$active
+      ? "rgba(192, 57, 43, 0.9)"
+      : "rgba(255, 255, 255, 0.15)"};
   transition: background 0.3s ease;
 `;
 
@@ -200,109 +200,115 @@ const Dot = styled.div`
  * @param {ReactNode} extra     - Optional third page
  */
 export default function MobilePanel({
-    id,
-    label,
-    title,
-    action,
-    details,
-    extra,
+  id,
+  label,
+  title,
+  action,
+  details,
+  extra,
+  onEnterAction,
+  onLeaveAction,
 }) {
-    const sectionRef = useRef(null);
-    const panelRef = useRef(null);
-    const swipeRef = useRef(null);
-    const [activePage, setActivePage] = useState(0);
+  const sectionRef = useRef(null);
+  const panelRef = useRef(null);
+  const swipeRef = useRef(null);
+  const [activePage, setActivePage] = useState(0);
 
-    const pages = [action, details, extra].filter(Boolean);
+  const pages = [action, details, extra].filter(Boolean);
 
-    useEffect(() => {
-        const panel = panelRef.current;
-        if (!panel) return;
+  useEffect(() => {
+    const panel = panelRef.current;
+    if (!panel) return;
 
-        const ctx = gsap.context(() => {
-            ScrollTrigger.create({
-                trigger: sectionRef.current,
-                start: "top 80%",
-                end: "bottom 20%",
-                onEnter: () => {
-                    gsap.to(panel, {
-                        opacity: 1,
-                        y: 0,
-                        duration: 0.6,
-                        ease: "power3.out",
-                    });
-                },
-                onLeave: () => {
-                    gsap.to(panel, {
-                        opacity: 0,
-                        y: 30,
-                        duration: 0.4,
-                    });
-                },
-                onEnterBack: () => {
-                    gsap.to(panel, {
-                        opacity: 1,
-                        y: 0,
-                        duration: 0.4,
-                    });
-                },
-                onLeaveBack: () => {
-                    gsap.to(panel, {
-                        opacity: 0,
-                        y: 30,
-                        duration: 0.4,
-                    });
-                },
-            });
-        });
+    const ctx = gsap.context(() => {
+      ScrollTrigger.create({
+        trigger: sectionRef.current,
+        start: "top 80%",
+        end: "bottom 20%",
+        onEnter: () => {
+          gsap.to(panel, {
+            opacity: 1,
+            y: 0,
+            duration: 0.6,
+            ease: "power3.out",
+          });
+          if (onEnterAction) onEnterAction();
+        },
+        onLeave: () => {
+          gsap.to(panel, {
+            opacity: 0,
+            y: 30,
+            duration: 0.4,
+          });
+          if (onLeaveAction) onLeaveAction();
+        },
+        onEnterBack: () => {
+          gsap.to(panel, {
+            opacity: 1,
+            y: 0,
+            duration: 0.4,
+          });
+          if (onEnterAction) onEnterAction();
+        },
+        onLeaveBack: () => {
+          gsap.to(panel, {
+            opacity: 0,
+            y: 30,
+            duration: 0.4,
+          });
+          if (onLeaveAction) onLeaveAction();
+        },
+      });
+    });
 
-        return () => ctx.revert();
-    }, []);
+    return () => ctx.revert();
+  }, []);
 
-    // Track which swipe page is active
-    useEffect(() => {
-        const swipe = swipeRef.current;
-        if (!swipe) return;
+  // Track which swipe page is active
+  useEffect(() => {
+    const swipe = swipeRef.current;
+    if (!swipe) return;
 
-        const handleScroll = () => {
-            const index = Math.round(
-                swipe.scrollLeft / swipe.clientWidth,
-            );
-            setActivePage(index);
-        };
+    const handleScroll = () => {
+      const index = Math.round(
+        swipe.scrollLeft / swipe.clientWidth,
+      );
+      setActivePage(index);
+    };
 
-        swipe.addEventListener("scroll", handleScroll, {
-            passive: true,
-        });
-        return () => swipe.removeEventListener("scroll", handleScroll);
-    }, []);
+    swipe.addEventListener("scroll", handleScroll, {
+      passive: true,
+    });
+    return () => swipe.removeEventListener("scroll", handleScroll);
+  }, []);
 
-    return (
-        <Section ref={sectionRef} id={id}>
-            <CarViewport />
+  return (
+    <Section ref={sectionRef} id={id}>
+      <CarViewport />
 
-            <PanelContainer ref={panelRef}>
-                <DragHandle />
+      <PanelContainer ref={panelRef}>
+        <DragHandle />
 
-                <PanelHeader>
-                    <SectionLabel>{label}</SectionLabel>
-                    <Title>{title}</Title>
-                    <FlagDivider />
-                </PanelHeader>
+        <PanelHeader>
+          <SectionLabel>{label}</SectionLabel>
+          <Title>{title}</Title>
+          <FlagDivider />
+        </PanelHeader>
 
-                <SwipeArea ref={swipeRef}>
-                    {pages.map((page, i) => (
-                        <SwipePage key={i}>{page}</SwipePage>
-                    ))}
-                </SwipeArea>
+        <SwipeArea ref={swipeRef}>
+          {pages.map((page, i) => (
+            <SwipePage key={i}>{page}</SwipePage>
+          ))}
+        </SwipeArea>
 
-                {pages.length > 1 && (
-                    <DotsContainer>
-                        {pages.map((_, i) => (
-                            <Dot key={i} $active={i === activePage} />
-                        ))}
-                    </DotsContainer>
-                )}
-            </PanelContainer>
-        </Section>
-    );
+        {pages.length > 1 && (
+          <DotsContainer>
+            {pages.map((_, i) => (
+              <Dot key={i} $active={i === activePage} />
+            ))}
+          </DotsContainer>
+        )}
+      </PanelContainer>
+    </Section>
+  );
 }

@@ -436,6 +436,7 @@ export default function MobileEngineBaySection({
             id={id}
             label="Heart of the Beast"
             title="2.9L V6 Bi-Turbo"
+            onLeaveAction={() => hoodOpen && onHoodToggle?.(false)}
             action={
                 <ActionPage>
                     <Description>
@@ -458,6 +459,14 @@ export default function MobileEngineBaySection({
                                 90°
                             </SpecValue>
                         </SpecCard>
+                    </SpecsGrid>
+
+                    <SwipeHint>Swipe for details →</SwipeHint>
+                </ActionPage>
+            }
+            details={
+                <ActionPage>
+                    <SpecsGrid>
                         <SpecCard>
                             <SpecLabel>Redline</SpecLabel>
                             <SpecValue $large $accent>
@@ -473,11 +482,6 @@ export default function MobileEngineBaySection({
                         </SpecCard>
                     </SpecsGrid>
 
-                    <SwipeHint>Swipe for details →</SwipeHint>
-                </ActionPage>
-            }
-            details={
-                <DetailsPage>
                     <LeverHousing>
                         <LeverRow>
                             <LeverIconFrame $active={hoodOpen}>
@@ -501,7 +505,10 @@ export default function MobileEngineBaySection({
                             />
                         </LeverRow>
                     </LeverHousing>
-
+                </ActionPage>
+            }
+            extra={
+                <DetailsPage>
                     <DetailRow>
                         <DetailLabel>Configuration</DetailLabel>
                         <DetailValue>V6 Twin-Turbo</DetailValue>

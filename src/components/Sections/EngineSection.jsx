@@ -333,14 +333,14 @@ export default function EngineSection({
   const targetVolumeRef = useRef(0.6);
 
   useEffect(() => {
-    startupSoundRef.current = new Audio('/sounds/GiuliaEngine (mp3cut.net).mp3');
+    startupSoundRef.current = new Audio('/sounds/EngineStart.wav');
     startupSoundRef.current.volume = 0.6;
-    
+
     // Create two audio elements for crossfade looping
-    runningSoundRef.current = new Audio('/sounds/engingRunning.mp3');
+    runningSoundRef.current = new Audio('/sounds/IdleGiula.wav');
     runningSoundRef.current.volume = 0;
-    
-    runningSound2Ref.current = new Audio('/sounds/engingRunning.mp3');
+
+    runningSound2Ref.current = new Audio('/sounds/IdleGiula.wav');
     runningSound2Ref.current.volume = 0;
 
     return () => {
@@ -365,38 +365,38 @@ export default function EngineSection({
   // Crossfade loop function for seamless audio
   const startCrossfadeLoop = () => {
     if (!runningSoundRef.current || !runningSound2Ref.current) return;
-    
+
     const audio1 = runningSoundRef.current;
     const audio2 = runningSound2Ref.current;
     const crossfadeDuration = 1.5; // seconds
     const targetVolume = targetVolumeRef.current;
-    
+
     // Start first audio
     audio1.currentTime = 0;
     audio1.volume = targetVolume;
-    audio1.play().catch(() => {});
-    
+    audio1.play().catch(() => { });
+
     const audioDuration = audio1.duration || 5; // fallback duration
     const loopPoint = Math.max(0.5, audioDuration - crossfadeDuration);
-    
+
     let activeAudio = 1;
-    
+
     crossfadeIntervalRef.current = setInterval(() => {
       if (!wasEngineOnRef.current) {
         clearInterval(crossfadeIntervalRef.current);
         return;
       }
-      
+
       const currentAudio = activeAudio === 1 ? audio1 : audio2;
       const nextAudio = activeAudio === 1 ? audio2 : audio1;
-      
+
       // Check if we need to start crossfade
       if (currentAudio.currentTime >= loopPoint) {
         // Start next audio and crossfade
         nextAudio.currentTime = 0;
         nextAudio.volume = 0;
-        nextAudio.play().catch(() => {});
-        
+        nextAudio.play().catch(() => { });
+
         // Crossfade volumes
         const fadeSteps = 30;
         let step = 0;
@@ -405,14 +405,14 @@ export default function EngineSection({
           const progress = step / fadeSteps;
           currentAudio.volume = targetVolume * (1 - progress);
           nextAudio.volume = targetVolume * progress;
-          
+
           if (step >= fadeSteps) {
             clearInterval(fadeInterval);
             currentAudio.pause();
             currentAudio.currentTime = 0;
           }
         }, (crossfadeDuration * 1000) / fadeSteps);
-        
+
         activeAudio = activeAudio === 1 ? 2 : 1;
       }
     }, 100);
@@ -431,16 +431,15 @@ export default function EngineSection({
       // Only play startup sound if button was clicked in THIS section (not from FreeRoam lights)
       if (startupSoundRef.current && buttonClickedRef.current) {
         startupSoundRef.current.currentTime = 0;
-        startupSoundRef.current.play().catch(() => {});
-        
+        startupSoundRef.current.play().catch(() => { });
+
         // When startup sound ends, start the crossfade running loop
         startupSoundRef.current.onended = () => {
-          if (wasEngineOnRef.current && buttonClickedRef.current) {
+          if (wasEngineOnRef.current) {
             startCrossfadeLoop();
           }
+          buttonClickedRef.current = false;
         };
-        // Reset the flag after starting sound
-        buttonClickedRef.current = false;
       }
 
       rpmTweenRef.current = gsap.to(rpmObj, {
@@ -460,18 +459,18 @@ export default function EngineSection({
     } else if (!headlightsOn && wasEngineOnRef.current) {
       wasEngineOnRef.current = false;
       setDisplayRpm(0);
-      
+
       // Stop crossfade loop
       if (crossfadeIntervalRef.current) {
         clearInterval(crossfadeIntervalRef.current);
       }
-      
+
       // Stop all engine sounds with fade out (no startup sound on turn off)
       if (startupSoundRef.current) {
         startupSoundRef.current.pause();
         startupSoundRef.current.onended = null;
       }
-      
+
       // Fade out both running sounds
       const fadeOutAudio = (audio) => {
         if (!audio) return;
@@ -487,7 +486,7 @@ export default function EngineSection({
         };
         fadeOut();
       };
-      
+
       fadeOutAudio(runningSoundRef.current);
       fadeOutAudio(runningSound2Ref.current);
     }

@@ -331,26 +331,36 @@ export default function CameraController({
 
     const easedProgress = smoothstep(sectionProgress);
 
-    targetValues.current.position.lerpVectors(
-      new THREE.Vector3(...currentConfig.position),
-      new THREE.Vector3(...nextConfig.position),
-      easedProgress,
+    // FIX: Pre-extract values to avoid creating 'new THREE.Vector3' every frame (which causes Garbage Collection stutters)
+    const [cx, cy, cz] = currentConfig.position;
+    const [nx, ny, nz] = nextConfig.position;
+    
+    targetValues.current.position.set(
+      cx + (nx - cx) * easedProgress,
+      cy + (ny - cy) * easedProgress,
+      cz + (nz - cz) * easedProgress
     );
 
-    targetValues.current.target.lerpVectors(
-      new THREE.Vector3(...currentConfig.target),
-      new THREE.Vector3(...nextConfig.target),
-      easedProgress,
+    const [tcx, tcy, tcz] = currentConfig.target;
+    const [tnx, tny, tnz] = nextConfig.target;
+
+    targetValues.current.target.set(
+      tcx + (tnx - tcx) * easedProgress,
+      tcy + (tny - tcy) * easedProgress,
+      tcz + (tnz - tcz) * easedProgress
     );
 
     targetValues.current.fov =
       currentConfig.fov +
       (nextConfig.fov - currentConfig.fov) * easedProgress;
 
-    // Perfect mathematical sync to GSAP's scrub without R3F duplicate exponential smoothing
-    currentValues.current.position.copy(targetValues.current.position);
-    currentValues.current.target.copy(targetValues.current.target);
-    currentValues.current.fov = targetValues.current.fov;
+    // Apply exponential smoothing to decouple framerate from GSAP update ticks
+    const safeDelta = Math.min(delta, 0.05);
+    const lerpFactor = 1 - Math.exp(-12 * safeDelta); 
+
+    currentValues.current.position.lerp(targetValues.current.position, lerpFactor);
+    currentValues.current.target.lerp(targetValues.current.target, lerpFactor);
+    currentValues.current.fov += (targetValues.current.fov - currentValues.current.fov) * lerpFactor;
 
     camera.position.copy(currentValues.current.position);
     camera.lookAt(currentValues.current.target);

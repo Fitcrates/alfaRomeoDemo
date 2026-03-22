@@ -21,10 +21,13 @@ const GaugeWrapper = styled.div`
   width: 100%;
 `;
 
-const ButtonRow = styled.div`
+const ControlsRow = styled.div`
   display: flex;
+  flex-direction: row;
   align-items: center;
-  gap: 10px;
+  justify-content: center;
+  gap: 24px;
+  width: 100%;
 `;
 
 const ButtonLabel = styled.span`
@@ -131,14 +134,14 @@ export default function MobileEngineSection({
 
     useEffect(() => {
         startupSoundRef.current = new Audio(
-            "/sounds/GiuliaEngine (mp3cut.net).mp3",
+            "/sounds/EngineStart.wav",
         );
         startupSoundRef.current.volume = 0.6;
 
-        runningSoundRef.current = new Audio("/sounds/engingRunning.mp3");
+        runningSoundRef.current = new Audio("/sounds/IdleGiula.wav");
         runningSoundRef.current.volume = 0;
 
-        runningSound2Ref.current = new Audio("/sounds/engingRunning.mp3");
+        runningSound2Ref.current = new Audio("/sounds/IdleGiula.wav");
         runningSound2Ref.current.volume = 0;
 
         return () => {
@@ -218,14 +221,11 @@ export default function MobileEngineSection({
                 startupSoundRef.current.currentTime = 0;
                 startupSoundRef.current.play().catch(() => { });
                 startupSoundRef.current.onended = () => {
-                    if (
-                        wasEngineOnRef.current &&
-                        buttonClickedRef.current
-                    ) {
+                    if (wasEngineOnRef.current) {
                         startCrossfadeLoop();
                     }
+                    buttonClickedRef.current = false;
                 };
-                buttonClickedRef.current = false;
             }
 
             rpmTweenRef.current = gsap.to(rpmObj, {
@@ -309,24 +309,26 @@ export default function MobileEngineSection({
             title="Engine & Power"
             action={
                 <ActionPage>
-                    <GaugeWrapper>
-                        <MobileRpmGauge
-                            value={displayRpm}
-                            maxRpm={8000}
-                            size="120px"
-                        />
-                    </GaugeWrapper>
+                    <ControlsRow>
+                        <GaugeWrapper style={{ width: 'auto' }}>
+                            <MobileRpmGauge
+                                value={displayRpm}
+                                maxRpm={8000}
+                                size="120px"
+                            />
+                        </GaugeWrapper>
 
-                    <ButtonRow>
-                        <MobileEngineStartButton
-                            onClick={handleEngineStart}
-                            size="56px"
-                            active={headlightsOn}
-                        />
-                        <ButtonLabel>
-                            {headlightsOn ? "Lights On" : "Turn on lights"}
-                        </ButtonLabel>
-                    </ButtonRow>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                            <MobileEngineStartButton
+                                onClick={handleEngineStart}
+                                size="56px"
+                                active={headlightsOn}
+                            />
+                            <ButtonLabel>
+                                {headlightsOn ? "Lights On" : "Turn on lights"}
+                            </ButtonLabel>
+                        </div>
+                    </ControlsRow>
 
                     <SwipeHint>Swipe for specs →</SwipeHint>
                 </ActionPage>
@@ -364,27 +366,31 @@ export default function MobileEngineSection({
                                 size="1.4rem"
                             />
                         </SpecItem>
-                        <SpecItem>
-                            <SpecCounter
-                                value={3.9}
-                                label="0-100 km/h"
-                                unit="sec"
-                                decimals={1}
-                                isVisible={isVisible}
-                                size="1.4rem"
-                            />
-                        </SpecItem>
-                        <SpecItem>
-                            <SpecCounter
-                                value={307}
-                                label="Top Speed"
-                                unit="km/h"
-                                isVisible={isVisible}
-                                size="1.4rem"
-                            />
-                        </SpecItem>
                     </SpecsGrid>
                 </>
+            }
+            extra={
+                <SpecsGrid style={{ display: "flex", flexDirection: "column" }}>
+                    <SpecItem>
+                        <SpecCounter
+                            value={3.9}
+                            label="0-100 km/h"
+                            unit="sec"
+                            decimals={1}
+                            isVisible={isVisible}
+                            size="1.4rem"
+                        />
+                    </SpecItem>
+                    <SpecItem>
+                        <SpecCounter
+                            value={307}
+                            label="Top Speed"
+                            unit="km/h"
+                            isVisible={isVisible}
+                            size="1.4rem"
+                        />
+                    </SpecItem>
+                </SpecsGrid>
             }
         />
     );

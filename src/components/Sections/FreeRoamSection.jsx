@@ -4,6 +4,7 @@ import styled, { keyframes, css } from 'styled-components'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import EngineStartButton from '../UI/EngineStartButton'
+import MobileDnaModeRotary from '../UI/MobileUI/MobileDnaModeRotary'
 
 gsap.registerPlugin(ScrollTrigger)
 
@@ -49,8 +50,7 @@ const ControlPanel = styled.div`
 const ConsoleBody = styled.div`
   position: relative;
   display: flex;
-  align-items: stretch;
-  gap: 0;
+  flex-direction: column;
   background:
     linear-gradient(
       160deg,
@@ -87,6 +87,31 @@ const ConsoleBody = styled.div`
     pointer-events: none;
     z-index: 0;
   }
+`
+
+const SectionsRow = styled.div`
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  position: relative;
+  z-index: 1;
+`
+
+const TopFlagStripe = styled.div`
+  width: 100%;
+  height: 4px;
+  background: linear-gradient(
+    90deg,
+    #009246 0%,
+    #009246 33%,
+    #ffffff 33%,
+    #ffffff 66%,
+    #CE2B37 66%,
+    #CE2B37 100%
+  );
+  opacity: 0.85;
+  z-index: 2;
+  box-shadow: 0 2px 10px rgba(255, 255, 255, 0.1);
 `
 
 const PanelSection = styled.div`
@@ -539,7 +564,9 @@ const ExitButton = styled.button`
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 12px 18px;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px;
   background: linear-gradient(
     145deg,
     rgba(192, 57, 43, 0.2),
@@ -589,6 +616,8 @@ export default function FreeRoamSection({
   onToggleLights,
   onToggleEngine,
   onDrive,
+  driveMode,
+  onDriveModeChange,
 }) {
   const sectionRef = useRef(null)
   const [isActive, setIsActive] = useState(false)
@@ -597,120 +626,8 @@ export default function FreeRoamSection({
   // ═══════════════════════════════════════════════════════════════════════════
   // ENGINE SOUND SYSTEM
   // ═══════════════════════════════════════════════════════════════════════════
-  // IMPORTANT: DO NOT MODIFY WITHOUT UNDERSTANDING THE LOGIC!
-  // 
-  // The sound system has TWO states:
-  // 1. engineOn (prop) - Current engine state from parent
-  // 2. engineWasOnRef - Previous engine state (to detect CHANGES)
-  //
-  // Sound should ONLY play when engine TURNS ON (false -> true)
-  // Sound should ONLY stop when engine TURNS OFF (true -> false)
-  // Sound should NEVER play on component mount or when engineOn is already false
-  // ═══════════════════════════════════════════════════════════════════════════
-
-  const startupSoundRef = useRef(null)
-  const runningSoundRef = useRef(null)
-  // Track if we've already synced with the initial engineOn state
-  const initialSyncDoneRef = useRef(false)
-  // Track the PREVIOUS engine state to detect transitions
-  const prevEngineOnRef = useRef(false)
-
-  // Initialize audio elements ONCE on mount
-  useEffect(() => {
-    startupSoundRef.current = new Audio('/sounds/GiuliaEngine (mp3cut.net).mp3')
-    startupSoundRef.current.volume = 0.6
-
-    runningSoundRef.current = new Audio('/sounds/engingRunning.mp3')
-    runningSoundRef.current.volume = 0
-    runningSoundRef.current.loop = true // Native HTML5 loop for seamless playback
-
-    return () => {
-      // Cleanup on unmount
-      if (startupSoundRef.current) {
-        startupSoundRef.current.pause()
-        startupSoundRef.current.onended = null
-        startupSoundRef.current = null
-      }
-      if (runningSoundRef.current) {
-        runningSoundRef.current.pause()
-        runningSoundRef.current = null
-      }
-    }
-  }, [])
-
-  // Start the engine running loop sound (called after startup sound ends)
-  const startEngineLoop = () => {
-    if (!runningSoundRef.current) return
-    const audio = runningSoundRef.current
-    audio.currentTime = 0
-    audio.volume = 0.6
-    audio.play().catch(() => { })
-  }
-
-  // Handle engine state TRANSITIONS (not just state)
-  useEffect(() => {
-    // On first render, just sync the ref with current state - DON'T play sounds
-    if (!initialSyncDoneRef.current) {
-      initialSyncDoneRef.current = true
-      prevEngineOnRef.current = engineOn
-      return // EXIT - no sound on initial mount
-    }
-
-    // Detect state TRANSITION
-    const wasOn = prevEngineOnRef.current
-    const isOn = engineOn
-
-    // Update ref for next render
-    prevEngineOnRef.current = engineOn
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // ENGINE TURNING ON (was OFF, now ON)
-    // ─────────────────────────────────────────────────────────────────────────
-    if (isOn && !wasOn) {
-      if (startupSoundRef.current) {
-        startupSoundRef.current.currentTime = 0
-        startupSoundRef.current.play().catch(() => { })
-
-        // When startup sound ends, start the running loop
-        startupSoundRef.current.onended = () => {
-          // Only start loop if engine is STILL on
-          if (prevEngineOnRef.current) {
-            startEngineLoop()
-          }
-        }
-      }
-    }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // ENGINE TURNING OFF (was ON, now OFF)
-    // ─────────────────────────────────────────────────────────────────────────
-    if (!isOn && wasOn) {
-      // Stop startup sound immediately and clear callback
-      if (startupSoundRef.current) {
-        startupSoundRef.current.pause()
-        startupSoundRef.current.onended = null // CRITICAL: Remove callback!
-        startupSoundRef.current.currentTime = 0
-      }
-
-      // Fade out running sound smoothly
-      if (runningSoundRef.current && runningSoundRef.current.volume > 0) {
-        const audio = runningSoundRef.current
-        const fadeOut = () => {
-          if (audio.volume > 0.05) {
-            audio.volume = Math.max(0, audio.volume - 0.05)
-            requestAnimationFrame(fadeOut)
-          } else {
-            audio.pause()
-            audio.volume = 0
-            audio.currentTime = 0
-          }
-        }
-        fadeOut()
-      }
-    }
-
-    // NOTE: If isOn === wasOn, no transition occurred, so no sound action needed
-  }, [engineOn])
+  // Engine sound logic is now handled in `EngineSoundSystem.jsx`
+  // ─────────────────────────────────────────────────────────────────────────
 
   useEffect(() => {
     const section = sectionRef.current
@@ -794,7 +711,7 @@ export default function FreeRoamSection({
     return () => {
       window.removeEventListener('keydown', onDown)
       window.removeEventListener('keyup', onUp)
-      keysPressed.current.clear()
+      // Preserving keysPressed.current so input isn't interrupted by re-renders
     }
   }, [isActive, onDrive, engineOn])
 
@@ -853,198 +770,146 @@ export default function FreeRoamSection({
   const controlPanelContent = (
     <ControlPanel className={isActive ? 'active' : ''}>
       <ConsoleBody>
-        {/* ── Engine Start ── */}
-        <PanelSection>
-          <PanelLabel>Engine</PanelLabel>
-          <EngineArea>
-            <EngineStartButton
-              onClick={onToggleEngine}
-              size="90px"
-              active={engineOn}
-            />
-            <EngineStatus $active={engineOn}>
-              {engineOn ? 'RUNNING' : 'OFF'}
-            </EngineStatus>
+        <TopFlagStripe />
+        <SectionsRow>
+          {/* ── Engine Start + Lights ── */}
+          <PanelSection style={{ minWidth: '120px' }}>
+            <PanelLabel>Engine</PanelLabel>
+            <EngineArea>
+              <EngineStartButton
+                onClick={onToggleEngine}
+                size="90px"
+                active={engineOn}
+              />
+              <EngineStatus $active={engineOn}>
+                {engineOn ? 'RUNNING' : 'OFF'}
+              </EngineStatus>
+            </EngineArea>
+            <LightsArea style={{ marginTop: '0.5rem' }}>
+              <LightsButton $active={headlightsOn} onClick={onToggleLights}>
+                <HeadlightIcon />
+              </LightsButton>
+              <LightsStatus $active={headlightsOn}>
+                {headlightsOn ? 'ON' : 'OFF'}
+              </LightsStatus>
+            </LightsArea>
+          </PanelSection>
+
+          {/* ── Camera hints + Exit ── */}
+          <PanelSection style={{ minWidth: '90px' }}>
+            <PanelLabel>Camera</PanelLabel>
+            <HintsArea>
+              <HintRow>
+                <HintKey>LMB</HintKey>
+                <span>Rotate</span>
+              </HintRow>
+              <HintRow>
+                <HintKey>Scroll</HintKey>
+                <span>Zoom</span>
+              </HintRow>
+            </HintsArea>
             <ExitButton onClick={() => {
               const contact = document.getElementById('contact')
               if (contact) {
                 contact.scrollIntoView({ behavior: 'smooth' })
               }
-            }}>
+            }} style={{ marginTop: '0.5rem' }}>
               <svg viewBox="0 0 24 24">
                 <path d="M19 12H5M12 19l-7-7 7-7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
               Exit
             </ExitButton>
-          </EngineArea>
-        </PanelSection>
+          </PanelSection>
 
-        {/* ── Camera hints ── */}
-        <PanelSection>
-          <PanelLabel>Camera</PanelLabel>
-          <HintsArea>
-            <HintRow>
-              <HintKey>LMB</HintKey>
-              <span>Rotate</span>
-            </HintRow>
-            <HintRow>
-              <HintKey>RMB</HintKey>
-              <span>Pan</span>
-            </HintRow>
-            <HintRow>
-              <HintKey>Scroll</HintKey>
-              <span>Zoom</span>
-            </HintRow>
-          </HintsArea>
-        </PanelSection>
+          {/* ── Rotary direction controller ── */}
+          <PanelSection style={{ minWidth: '160px' }}>
+            <PanelLabel>Steer</PanelLabel>
+            <RotaryArea>
+              <RotaryOuter>
+                <RotaryRing />
 
-        {/* ── Shifter / Drive ── */}
-        <PanelSection>
-          <PanelLabel>Drive</PanelLabel>
-          <FlagStripe />
-          <ShifterArea>
-            <ShifterGate>
-              <GearLabel
-                $active={activeDirection === 'forward'}
-                {...mkDriveProps('forward')}
-              >
-                P
-              </GearLabel>
-              <GearLabel
-                $active={activeDirection === 'forward'}
-                {...mkDriveProps('forward')}
-              >
-                R
-              </GearLabel>
-              <ShifterKnobIndicator />
-              <GearLabel
-                $active={activeDirection === 'forward'}
-                {...mkDriveProps('forward')}
-              >
-                N
-              </GearLabel>
-              <GearLabel
-                $active={activeDirection === 'forward' || activeDirection === 'backward'}
-                {...mkDriveProps('forward')}
-              >
-                D
-              </GearLabel>
-              <ManualRow>
-                <GearLabel
-                  $small
-                  $active={activeDirection === 'left'}
-                  {...mkDriveProps('left')}
-                >
-                  M−
-                </GearLabel>
-                <GearLabel
-                  $small
-                  $active={activeDirection === 'right'}
-                  {...mkDriveProps('right')}
-                >
-                  M+
-                </GearLabel>
-              </ManualRow>
-            </ShifterGate>
-            <GearStatus $moving={!!activeDirection}>
-              {activeDirection ? activeDirection.toUpperCase() : 'P'}
-            </GearStatus>
-          </ShifterArea>
-        </PanelSection>
-
-        {/* ── Rotary direction controller ── */}
-        <PanelSection>
-          <PanelLabel>Steer</PanelLabel>
-          <RotaryArea>
-            <RotaryOuter>
-              <RotaryRing />
-
-              <DirectionButton
-                $top
-                $active={activeDirection === 'forward'}
-                {...mkDriveProps('forward')}
-              >
-                <ArrowUp />
-              </DirectionButton>
-
-              <DirectionButton
-                $bottom
-                $active={activeDirection === 'backward'}
-                {...mkDriveProps('backward')}
-              >
-                <ArrowDown />
-              </DirectionButton>
-
-              <DirectionButton
-                $left
-                $active={activeDirection === 'left'}
-                {...mkDriveProps('left')}
-              >
-                <ArrowLeft />
-              </DirectionButton>
-
-              <DirectionButton
-                $right
-                $active={activeDirection === 'right'}
-                {...mkDriveProps('right')}
-              >
-                <ArrowRight />
-              </DirectionButton>
-
-              <RotaryCenter>
-                <RotaryArrow
-                  $area="up"
+                <DirectionButton
+                  $top
                   $active={activeDirection === 'forward'}
                   {...mkDriveProps('forward')}
                 >
                   <ArrowUp />
-                </RotaryArrow>
-                <RotaryArrow
-                  $area="left"
-                  $active={activeDirection === 'left'}
-                  {...mkDriveProps('left')}
-                >
-                  <ArrowLeft />
-                </RotaryArrow>
-                <RotaryArrow
-                  $area="right"
-                  $active={activeDirection === 'right'}
-                  {...mkDriveProps('right')}
-                >
-                  <ArrowRight />
-                </RotaryArrow>
-                <RotaryArrow
-                  $area="down"
+                </DirectionButton>
+
+                <DirectionButton
+                  $bottom
                   $active={activeDirection === 'backward'}
                   {...mkDriveProps('backward')}
                 >
                   <ArrowDown />
-                </RotaryArrow>
-              </RotaryCenter>
-            </RotaryOuter>
+                </DirectionButton>
 
-            <HintRow>
-              <HintKey>W</HintKey>
-              <HintKey>A</HintKey>
-              <HintKey>S</HintKey>
-              <HintKey>D</HintKey>
-            </HintRow>
-          </RotaryArea>
-        </PanelSection>
+                <DirectionButton
+                  $left
+                  $active={activeDirection === 'left'}
+                  {...mkDriveProps('left')}
+                >
+                  <ArrowLeft />
+                </DirectionButton>
 
-        {/* ── Headlights ── */}
-        <PanelSection>
-          <PanelLabel>Lights</PanelLabel>
-          <LightsArea>
-            <LightsButton $active={headlightsOn} onClick={onToggleLights}>
-              <HeadlightIcon />
-            </LightsButton>
-            <LightsStatus $active={headlightsOn}>
-              {headlightsOn ? 'ON' : 'OFF'}
-            </LightsStatus>
-          </LightsArea>
-        </PanelSection>
+                <DirectionButton
+                  $right
+                  $active={activeDirection === 'right'}
+                  {...mkDriveProps('right')}
+                >
+                  <ArrowRight />
+                </DirectionButton>
 
+                <RotaryCenter>
+                  <RotaryArrow
+                    $area="up"
+                    $active={activeDirection === 'forward'}
+                    {...mkDriveProps('forward')}
+                  >
+                    <ArrowUp />
+                  </RotaryArrow>
+                  <RotaryArrow
+                    $area="left"
+                    $active={activeDirection === 'left'}
+                    {...mkDriveProps('left')}
+                  >
+                    <ArrowLeft />
+                  </RotaryArrow>
+                  <RotaryArrow
+                    $area="right"
+                    $active={activeDirection === 'right'}
+                    {...mkDriveProps('right')}
+                  >
+                    <ArrowRight />
+                  </RotaryArrow>
+                  <RotaryArrow
+                    $area="down"
+                    $active={activeDirection === 'backward'}
+                    {...mkDriveProps('backward')}
+                  >
+                    <ArrowDown />
+                  </RotaryArrow>
+                </RotaryCenter>
+              </RotaryOuter>
+
+              <HintRow>
+                <HintKey>W</HintKey>
+                <HintKey>A</HintKey>
+                <HintKey>S</HintKey>
+                <HintKey>D</HintKey>
+              </HintRow>
+            </RotaryArea>
+          </PanelSection>
+
+          {/* ── DNA Drive Mode (replaces old gearbox) ── */}
+          <PanelSection style={{ minWidth: '220px' }}>
+            <PanelLabel>Drive Mode</PanelLabel>
+            <MobileDnaModeRotary
+              onModeChange={onDriveModeChange}
+              initialMode={driveMode || 'dynamic'}
+            />
+          </PanelSection>
+        </SectionsRow>
       </ConsoleBody>
     </ControlPanel>
   )

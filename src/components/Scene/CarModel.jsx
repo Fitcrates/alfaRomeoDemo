@@ -26,7 +26,8 @@ export default function CarModel({
   hoodOpen = false,
   driveDirectionRef = null,
   carPositionRef = null, // Ref to share car position with camera
-  trackColliders = [] // Prop for collision meshes
+  trackColliders = [], // Prop for collision meshes
+  driveMode = 'dynamic' // DNA drive mode: 'efficient', 'natural', 'dynamic', 'race'
 }) {
   const groupRef = useRef()
   const modelRef = useRef()
@@ -48,6 +49,7 @@ export default function CarModel({
   const leftRearSpillTargetRef = useRef()
   const rightRearSpillTargetRef = useRef()
   const headlightLevelRef = useRef(0)
+  const brakeLightLevelRef = useRef(0)
   const leftLensFlareRef = useRef()
   const rightLensFlareRef = useRef()
   const leftRearFlareRef = useRef()
@@ -59,6 +61,11 @@ export default function CarModel({
   const rearWheelsRef = useRef([]) // Rear wheels
   const wheelRotationRef = useRef(0)
   const raycasterRef = useRef(new THREE.Raycaster())
+  const collisionFrameRef = useRef(0)
+  // Pre-allocate reusable vectors to avoid GC pressure every frame
+  const _forwardDir = useRef(new THREE.Vector3())
+  const _rayDir = useRef(new THREE.Vector3())
+  const _rayOrigin = useRef(new THREE.Vector3())
 
   // Car physics state for realistic steering
   const carPhysicsRef = useRef({
@@ -68,14 +75,23 @@ export default function CarModel({
   })
 
   // Car configuration (Giulia wheelbase ~2.82m)
+  // DNA drive mode profiles
+  const DRIVE_MODES = {
+    efficient: { maxSpeed: 21.6, acceleration: 5, braking: 20, friction: 18, label: 'All Weather' },
+    natural: { maxSpeed: 33.6, acceleration: 7, braking: 22, friction: 16, label: 'Natural' },
+    dynamic: { maxSpeed: 48, acceleration: 10, braking: 25, friction: 14, label: 'Dynamic' },
+    race: { maxSpeed: 66, acceleration: 14, braking: 30, friction: 12, label: 'Race' },
+  }
+
   const CAR_CONFIG = {
     wheelbase: 4.52, // Distance between front and rear axles
-    maxSteeringAngle: Math.PI / 10, // ~36 degrees max wheel turn
-    maxSpeed: 35, // Increased for a more progressive and racing feel
-    acceleration: 8,
-    braking: 25,
-    friction: 15,
-    steeringSpeed: 2.5, // Snappier wheels
+    maxSteeringAngle: Math.PI / 6, // ~30 degrees at standstill — very tight turns
+    minSteeringAngle: Math.PI / 24, // ~6.4 degrees at top speed — very stable
+    maxSpeed: DRIVE_MODES[driveMode]?.maxSpeed || 35,
+    acceleration: DRIVE_MODES[driveMode]?.acceleration || 8,
+    braking: DRIVE_MODES[driveMode]?.braking || 25,
+    friction: DRIVE_MODES[driveMode]?.friction || 15,
+    steeringSpeed: 2,
     steeringReturnSpeed: 2,
   }
 
@@ -115,6 +131,13 @@ export default function CarModel({
     basePositionRef.current = carPosition
     baseRotationRef.current = carRotation
   }, [carPosition, carRotation])
+
+  useEffect(() => {
+    if (groupRef.current) {
+      groupRef.current.position.set(carPosition[0], carPosition[1], carPosition[2]);
+      groupRef.current.rotation.y = carRotation;
+    }
+  }, []) // Initialize physical position properly on mount
 
   useEffect(() => {
     if (!scene || !modelRef.current) return
@@ -405,34 +428,48 @@ export default function CarModel({
     const targetHeadlightLevel = headlightsOn ? 1 : 0
     headlightLevelRef.current += (targetHeadlightLevel - headlightLevelRef.current) * lerpFactor
 
+    // Brake light logic
+    const throttleInputLocal = (driveDirectionRef?.current?.throttle === 'backward') ? -1 :
+      (driveDirectionRef?.current?.throttle === 'forward') ? 1 : 0;
+    // If pressing backward/brake while still rolling forward, or standing still holding brake
+    const isBraking = throttleInputLocal === -1 && (carPhysicsRef.current?.speed || 0) > -0.1;
+    const targetBrakeLevel = isBraking ? 1 : 0;
+    brakeLightLevelRef.current += (targetBrakeLevel - brakeLightLevelRef.current) * (lerpFactor * 2.5);
+
     // Update bloom glow emissive intensity based on headlight level
     // High emissiveIntensity triggers bloom post-processing
     const frontGlowIntensity = headlightLevelRef.current * 8
-    const rearGlowIntensity = headlightLevelRef.current * 12 // Higher for LED strip spread
-    const glowOpacity = headlightLevelRef.current // 0 when off, 1 when on
+
+    const baseRearGlow = headlightLevelRef.current * 12 // Higher for LED strip spread
+    const brakeGlow = brakeLightLevelRef.current * 30
+    const rearGlowIntensity = Math.max(baseRearGlow, brakeGlow)
+
+    const frontGlowOpacity = headlightLevelRef.current // 0 when off, 1 when on
+    // Rear flares must also light up during braking even if headlights are off!
+    const rearGlowOpacity = Math.max(headlightLevelRef.current, brakeLightLevelRef.current)
     if (leftLensFlareRef.current?.material) {
       leftLensFlareRef.current.material.emissiveIntensity = frontGlowIntensity
-      leftLensFlareRef.current.material.opacity = glowOpacity
+      leftLensFlareRef.current.material.opacity = frontGlowOpacity
     }
     if (rightLensFlareRef.current?.material) {
       rightLensFlareRef.current.material.emissiveIntensity = frontGlowIntensity
-      rightLensFlareRef.current.material.opacity = glowOpacity
+      rightLensFlareRef.current.material.opacity = frontGlowOpacity
     }
     if (leftRearFlareRef.current?.material) {
       leftRearFlareRef.current.material.emissiveIntensity = rearGlowIntensity
-      leftRearFlareRef.current.material.opacity = glowOpacity
+      leftRearFlareRef.current.material.opacity = rearGlowOpacity
     }
     if (rightRearFlareRef.current?.material) {
       rightRearFlareRef.current.material.emissiveIntensity = rearGlowIntensity
-      rightRearFlareRef.current.material.opacity = glowOpacity
+      rightRearFlareRef.current.material.opacity = rearGlowOpacity
     }
     if (leftRearFlare2Ref.current?.material) {
       leftRearFlare2Ref.current.material.emissiveIntensity = rearGlowIntensity
-      leftRearFlare2Ref.current.material.opacity = glowOpacity
+      leftRearFlare2Ref.current.material.opacity = rearGlowOpacity
     }
     if (rightRearFlare2Ref.current?.material) {
       rightRearFlare2Ref.current.material.emissiveIntensity = rearGlowIntensity
-      rightRearFlare2Ref.current.material.opacity = glowOpacity
+      rightRearFlare2Ref.current.material.opacity = rearGlowOpacity
     }
 
     // Update hood/body transparency based on hoodOpen state (button click only)
@@ -465,8 +502,13 @@ export default function CarModel({
         if (driveDir.steering === 'left') steeringInput = 1
         else if (driveDir.steering === 'right') steeringInput = -1
 
-        // --- Steering (smooth interpolation) ---
-        const targetSteering = steeringInput * config.maxSteeringAngle
+        // --- Steering (smooth interpolation with speed-dependent limit) ---
+        // At low speeds: full steering angle for tight turns
+        // At high speeds: reduced angle for stability (like real power steering)
+        const globalMaxSpeed = DRIVE_MODES['race']?.maxSpeed || 55;
+        const speedRatio = THREE.MathUtils.clamp(Math.abs(physics.speed) / globalMaxSpeed, 0, 1)
+        const currentMaxSteer = THREE.MathUtils.lerp(config.maxSteeringAngle, config.minSteeringAngle, speedRatio)
+        const targetSteering = steeringInput * currentMaxSteer
 
         if (Math.abs(steeringInput) > 0.01) {
           // Player is actively steering - interpolate towards target
@@ -476,11 +518,11 @@ export default function CarModel({
           damp(physics, 'steeringAngle', 0, 0.35, delta);
         }
 
-        // Clamp steering angle
+        // Clamp steering angle to speed-dependent limit
         physics.steeringAngle = THREE.MathUtils.clamp(
           physics.steeringAngle,
-          -config.maxSteeringAngle,
-          config.maxSteeringAngle
+          -currentMaxSteer,
+          currentMaxSteer
         )
 
         // --- Speed / Throttle ---
@@ -512,7 +554,12 @@ export default function CarModel({
             const turnRadius = config.wheelbase / Math.tan(physics.steeringAngle)
 
             // Angular velocity = speed / turnRadius
-            const angularVelocity = physics.speed / turnRadius
+            let angularVelocity = physics.speed / turnRadius
+
+            // Understeer at high speed: grip drops off, making car harder to turn
+            // At 0 speed: full grip (1.0), at max speed: 40% grip
+            const gripFactor = THREE.MathUtils.lerp(1.0, 0.4, speedRatio)
+            angularVelocity *= gripFactor
 
             // Update car heading (rotation)
             group.rotation.y += angularVelocity * delta
@@ -523,23 +570,42 @@ export default function CarModel({
           const dz = Math.cos(group.rotation.y) * physics.speed * delta
 
           let collision = false;
-          if (trackColliders && trackColliders.length > 0 && Math.abs(physics.speed) > 0.1) {
-             const vDir = new THREE.Vector3(dx, 0, dz).normalize();
-             raycasterRef.current.set(new THREE.Vector3(group.position.x, -0.3, group.position.z), vDir);
-             // Ensure it ignores things like ground, look purely forward for walls at chassis height
-             raycasterRef.current.far = 1.35; 
 
-             const intersects = raycasterRef.current.intersectObjects(trackColliders, false);
-             if (intersects.length > 0 && intersects[0].distance < 1.35) {
-               collision = true;
-             }
+          // Throttle raycasting to every 3rd frame to massively reduce GPU/CPU load
+          collisionFrameRef.current++;
+          if (trackColliders && trackColliders.length > 0 && Math.abs(physics.speed) > 0.05 && collisionFrameRef.current % 3 === 0) {
+            const isForward = physics.speed > 0;
+            // Reuse cached vectors instead of allocating new ones every frame
+            _forwardDir.current.set(Math.sin(group.rotation.y), 0, Math.cos(group.rotation.y)).normalize();
+            if (isForward) {
+              _rayDir.current.copy(_forwardDir.current);
+            } else {
+              _rayDir.current.copy(_forwardDir.current).negate();
+            }
+
+            _rayOrigin.current.set(group.position.x, -0.6, group.position.z);
+            const rayFar = 2.9;
+
+            raycasterRef.current.set(_rayOrigin.current, _rayDir.current);
+            raycasterRef.current.far = rayFar;
+
+            const intersects = raycasterRef.current.intersectObjects(trackColliders, false);
+
+            if (intersects.length > 0) {
+              collision = true;
+            }
+
+            if (collision) {
+              physics.speed = 0;
+              const repulse = isForward ? -0.15 : 0.15;
+              group.position.x += _forwardDir.current.x * repulse;
+              group.position.z += _forwardDir.current.z * repulse;
+            }
           }
 
-          if (collision) {
-             physics.speed *= -0.5; // Bounce
-          } else {
-             group.position.x += dx
-             group.position.z += dz
+          if (!collision) {
+            group.position.x += dx;
+            group.position.z += dz;
           }
         }
 
@@ -667,10 +733,10 @@ export default function CarModel({
     // These two point lights are the compact "lamp core" glow right at the taillamp housing.
     // Increase for stronger local red punch; keep low to avoid tiny vertical floor dots.
     if (leftTaillightRef.current) {
-      leftTaillightRef.current.intensity = 0.4 * headlightLevelRef.current
+      leftTaillightRef.current.intensity = Math.max(0.4 * headlightLevelRef.current, 2.0 * brakeLightLevelRef.current)
     }
     if (rightTaillightRef.current) {
-      rightTaillightRef.current.intensity = 0.4 * headlightLevelRef.current
+      rightTaillightRef.current.intensity = Math.max(0.4 * headlightLevelRef.current, 2.0 * brakeLightLevelRef.current)
     }
 
     if (leftFrontSpillRef.current) {
@@ -682,10 +748,10 @@ export default function CarModel({
     // These two spot lights are the rear floor spill (the long red projection behind the car).
     // Raise value for brighter rear projection footprint on floor.
     if (leftRearSpillRef.current) {
-      leftRearSpillRef.current.intensity = 9.8 * headlightLevelRef.current
+      leftRearSpillRef.current.intensity = Math.max(9.8 * headlightLevelRef.current, 20.0 * brakeLightLevelRef.current)
     }
     if (rightRearSpillRef.current) {
-      rightRearSpillRef.current.intensity = 9.8 * headlightLevelRef.current
+      rightRearSpillRef.current.intensity = Math.max(9.8 * headlightLevelRef.current, 20.0 * brakeLightLevelRef.current)
     }
 
     if (leftFrontSpillTargetRef.current && rightFrontSpillTargetRef.current) {
@@ -715,7 +781,10 @@ export default function CarModel({
 
   return (
     <group ref={groupRef}>
-      <ContactShadows frames={1} position={[0, -0.02, 0]} opacity={0.65} scale={18} blur={2.0} far={4} resolution={1024} color="#000000" />
+      {/* Only render baked ContactShadows when NOT free roaming — eliminates trailing shadow lines */}
+      {!freeRoamActive && (
+        <ContactShadows frames={1} position={[0, -0.02, 0]} opacity={0.65} scale={18} blur={2.0} far={4} resolution={1024} color="#000000" />
+      )}
       <group ref={vehicleLightsRef}>
         <object3D ref={leftHeadlightTargetRef} position={[-1.18, -1.05, 14]} />
         <object3D ref={rightHeadlightTargetRef} position={[1.18, -1.05, 14]} />

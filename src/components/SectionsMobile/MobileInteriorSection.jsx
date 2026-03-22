@@ -312,6 +312,70 @@ const Description = styled.p`
 export default function MobileInteriorSection({ id }) {
     const [audioHeights, setAudioHeights] = useState(Array(12).fill(8));
 
+    const audioRef = useRef(null);
+    const fadeIntervalRef = useRef(null);
+    const audioUnlockedRef = useRef(false);
+    const isInSectionRef = useRef(false);
+
+    // Music fade in/out effect
+    useEffect(() => {
+        const audio = new Audio('/sounds/cc catch - strangers by night.mp3');
+        audio.loop = true;
+        audio.volume = 0;
+        audio.preload = 'auto';
+        audioRef.current = audio;
+
+        const events = ['click', 'touchstart', 'keydown', 'mousedown'];
+        const unlockAudio = () => {
+            if (audioUnlockedRef.current) {
+                events.forEach(e => document.removeEventListener(e, unlockAudio));
+                return;
+            }
+            if (!audioRef.current) return;
+            audioRef.current.play().then(() => {
+                audioRef.current.pause();
+                audioRef.current.currentTime = 0;
+                audioUnlockedRef.current = true;
+                events.forEach(e => document.removeEventListener(e, unlockAudio));
+                if (isInSectionRef.current) {
+                    audioRef.current.play().catch(() => {});
+                    fadeAudio(0.3, 2000);
+                }
+            }).catch(() => {});
+        };
+
+        events.forEach(event => document.addEventListener(event, unlockAudio, { passive: true }));
+        return () => {
+            events.forEach(event => document.removeEventListener(event, unlockAudio));
+            if (audioRef.current) {
+                audioRef.current.pause();
+                audioRef.current = null;
+            }
+            if (fadeIntervalRef.current) clearInterval(fadeIntervalRef.current);
+        };
+    }, []);
+
+    const fadeAudio = (targetVolume, duration = 1500) => {
+        if (!audioRef.current) return;
+        if (fadeIntervalRef.current) clearInterval(fadeIntervalRef.current);
+        const audio = audioRef.current;
+        const startVolume = audio.volume;
+        const volumeDiff = targetVolume - startVolume;
+        const steps = 30;
+        const stepTime = duration / steps;
+        let currentStep = 0;
+        fadeIntervalRef.current = setInterval(() => {
+            currentStep++;
+            const progress = currentStep / steps;
+            const easeProgress = 1 - Math.pow(1 - progress, 3);
+            audio.volume = Math.max(0, Math.min(1, startVolume + volumeDiff * easeProgress));
+            if (currentStep >= steps) {
+                clearInterval(fadeIntervalRef.current);
+                if (targetVolume === 0) audio.pause();
+            }
+        }, stepTime);
+    };
+
     useEffect(() => {
         let timeoutId;
         let animId;
@@ -329,11 +393,22 @@ export default function MobileInteriorSection({ id }) {
     }, []);
 
     return (
-        <MobilePanel
-            id={id}
-            label="Luxury"
-            title="Interior & Comfort"
-            action={
+            <MobilePanel
+                id={id}
+                label="Luxury"
+                title="Interior & Comfort"
+                onEnterAction={() => {
+                    isInSectionRef.current = true;
+                    if (audioRef.current && audioUnlockedRef.current) {
+                        audioRef.current.play().catch(() => {});
+                        fadeAudio(0.3, 2000);
+                    }
+                }}
+                onLeaveAction={() => {
+                    isInSectionRef.current = false;
+                    fadeAudio(0, 1500);
+                }}
+                action={
                 <ActionPage>
                     <FeatureCard>
                         <FeatureIcon>
@@ -362,6 +437,11 @@ export default function MobileInteriorSection({ id }) {
                         </FeatureContent>
                     </FeatureCard>
 
+                    <SwipeHint>Swipe for details →</SwipeHint>
+                </ActionPage>
+            }
+            details={
+                <ActionPage>
                     <FeatureCard>
                         <FeatureIcon>
                             <svg viewBox="0 0 24 24">
@@ -389,18 +469,10 @@ export default function MobileInteriorSection({ id }) {
                             <p>14-speaker · 900W premium sound</p>
                         </FeatureContent>
                     </FeatureCard>
-
-                    <SwipeHint>Swipe for details →</SwipeHint>
                 </ActionPage>
             }
-            details={
+            extra={
                 <DetailsPage>
-                    <Description>
-                        Crafted with meticulous attention to detail, the interior blends
-                        racing DNA with everyday luxury through premium materials and
-                        advanced technology.
-                    </Description>
-
                     <AmbientLightStrip>
                         <LightStripHeader>
                             <LightStripTitle>Ambient Lighting</LightStripTitle>

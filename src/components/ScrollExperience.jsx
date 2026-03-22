@@ -16,7 +16,6 @@ import {
   Vignette,
   Noise,
 } from "@react-three/postprocessing";
-import { damp3 } from 'maath/easing';
 import styled from "styled-components";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
@@ -29,6 +28,7 @@ import CameraController from "./Scene/CameraController";
 import RacetrackScene from "./Scene/RacetrackScene";
 import LoadingScreen from "./Layout/LoadingScreen";
 import Navbar from "./Layout/Navbar";
+import EngineSoundSystem from "./Audio/EngineSoundSystem";
 
 import useIsMobile from "../hooks/useIsMobile";
 
@@ -67,6 +67,9 @@ function FreeRoamCamera({ carPositionRef, driveDirectionRef }) {
   const smoothedPosition = useRef(new THREE.Vector3());
   const smoothedTarget = useRef(new THREE.Vector3());
   const wasDrivingRef = useRef(false);
+  const _targetCamPos = useRef(new THREE.Vector3());
+  const _targetLookAt = useRef(new THREE.Vector3());
+  const _targetCenter = useRef(new THREE.Vector3());
 
   useEffect(() => {
     if (carPositionRef?.current) {
@@ -106,13 +109,15 @@ function FreeRoamCamera({ carPositionRef, driveDirectionRef }) {
         0,
         1
       );
-      const baseSmoothTime = 0.4;
-      const fastSmoothTime = 0.15;
-      const smoothTime = THREE.MathUtils.lerp(
-        baseSmoothTime,
-        fastSmoothTime,
+      const baseLerpSpeed = 2.5;
+      const fastLerpSpeed = 8.0;
+      const lerpSpeed = THREE.MathUtils.lerp(
+        baseLerpSpeed,
+        fastLerpSpeed,
         speedRatio
       );
+      const safeDelta = Math.min(delta, 0.05);
+      const lerpFactor = 1 - Math.exp(-lerpSpeed * safeDelta);
 
       const behindX =
         car.x - Math.sin(car.rotation) * followDistance;
@@ -132,16 +137,8 @@ function FreeRoamCamera({ carPositionRef, driveDirectionRef }) {
       const aheadZ =
         car.z + Math.cos(lookRot) * lookAheadDistance;
 
-      const targetCamPos = new THREE.Vector3(
-        behindX,
-        followHeight,
-        behindZ
-      );
-      const targetLookAt = new THREE.Vector3(
-        aheadX,
-        0.3,
-        aheadZ
-      );
+      _targetCamPos.current.set(behindX, followHeight, behindZ);
+      _targetLookAt.current.set(aheadX, 0.3, aheadZ);
 
       if (!wasDrivingRef.current) {
         smoothedPosition.current.copy(camera.position);
@@ -150,19 +147,17 @@ function FreeRoamCamera({ carPositionRef, driveDirectionRef }) {
         }
       }
 
-      damp3(smoothedPosition.current, targetCamPos, smoothTime, delta);
-      damp3(smoothedTarget.current, targetLookAt, smoothTime, delta);
+      smoothedPosition.current.lerp(_targetCamPos.current, lerpFactor);
+      smoothedTarget.current.lerp(_targetLookAt.current, lerpFactor);
 
       camera.position.copy(smoothedPosition.current);
       camera.lookAt(smoothedTarget.current);
     } else {
-      const targetCenter = new THREE.Vector3(
-        car.x,
-        0.3,
-        car.z
-      );
+      const safeDelta = Math.min(delta, 0.05);
+      const photoLerp = 1 - Math.exp(-3 * safeDelta);
+      _targetCenter.current.set(car.x, 0.3, car.z);
 
-      damp3(smoothedTarget.current, targetCenter, 0.35, delta);
+      smoothedTarget.current.lerp(_targetCenter.current, photoLerp);
 
       if (orbitRef.current) {
         orbitRef.current.target.copy(smoothedTarget.current);
@@ -229,13 +224,9 @@ function Scene({
   freeRoamActive,
   hoodOpen,
   driveDirectionRef,
+  driveMode,
+  carPositionRef,
 }) {
-  const carPositionRef = useRef({
-    x: 0,
-    y: -0.8,
-    z: 0,
-    rotation: 0,
-  });
 
   return (
     <>
@@ -262,6 +253,7 @@ function Scene({
         hoodOpen={hoodOpen}
         driveDirectionRef={driveDirectionRef}
         carPositionRef={carPositionRef}
+        driveMode={driveMode}
       />
 
       {freeRoamActive && (
@@ -298,10 +290,19 @@ export default function ScrollExperience() {
   const [freeRoamActive, setFreeRoamActive] = useState(false);
   const [showRacetrack, setShowRacetrack] = useState(false);
   const [hoodOpen, setHoodOpen] = useState(false);
+  const [driveMode, setDriveMode] = useState('dynamic');
 
   const driveDirectionRef = useRef({
     throttle: null,
     steering: null,
+  });
+
+  const carPositionRef = useRef({
+    x: 0,
+    y: -0.8,
+    z: 0,
+    rotation: 0,
+    speed: 0,
   });
 
   const isMobile = useIsMobile();
@@ -388,6 +389,10 @@ export default function ScrollExperience() {
     }
   };
 
+  const handleDriveModeChange = (mode) => {
+    setDriveMode(mode.id);
+  };
+
   return (
     <>
       <LoadingScreen progress={progress} isLoaded={isLoaded} />
@@ -428,6 +433,8 @@ export default function ScrollExperience() {
                   carColor={carColor}
                   headlightsOn={headlightsOn}
                   driveDirectionRef={driveDirectionRef}
+                  driveMode={driveMode}
+                  carPositionRef={carPositionRef}
                 />
               ) : (
                 <Scene
@@ -438,12 +445,16 @@ export default function ScrollExperience() {
                   freeRoamActive={freeRoamActive}
                   hoodOpen={hoodOpen}
                   driveDirectionRef={driveDirectionRef}
+                  driveMode={driveMode}
+                  carPositionRef={carPositionRef}
                 />
               )}
             </Suspense>
             <Stats showPanel={0} className="stats-panel" />
           </Canvas>
         </CanvasContainer>
+
+        <EngineSoundSystem engineOn={engineOn} carPositionRef={carPositionRef} />
 
         <SectionsContainer
           style={{
@@ -523,6 +534,8 @@ export default function ScrollExperience() {
                 onToggleLights={handleToggleLights}
                 onToggleEngine={handleToggleEngine}
                 onDrive={handleDrive}
+                driveMode={driveMode}
+                onDriveModeChange={handleDriveModeChange}
               />
             </>
           )}
@@ -552,6 +565,8 @@ export default function ScrollExperience() {
               onFreeRoamEnter={() => { }}
               onFreeRoamLeave={() => { }}
               forceActive={true}
+              driveMode={driveMode}
+              onDriveModeChange={handleDriveModeChange}
             />
           )
         )}

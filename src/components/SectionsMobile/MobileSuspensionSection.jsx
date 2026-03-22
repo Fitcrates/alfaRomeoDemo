@@ -3,6 +3,12 @@ import styled from "styled-components";
 import MobilePanel from "./MobilePanel";
 import MobileDnaModeRotary from "../UI/MobileUI/MobileDnaModeRotary";
 
+const DetailsPage = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+`;
+
 const ActionPage = styled.div`
   display: flex;
   flex-direction: column;
@@ -149,7 +155,7 @@ export default function MobileSuspensionSection({
             action={
                 <ActionPage>
                     <DnaWrapper>
-                        <MobileDnaModeRotary onModeChange={onModeChange} />
+                        <MobileDnaModeRotary onModeChange={onModeChange} horizontal={true} />
                     </DnaWrapper>
 
                     <WeightRow>
@@ -162,7 +168,7 @@ export default function MobileSuspensionSection({
                 </ActionPage>
             }
             details={
-                <>
+                <DetailsPage>
                     <SpecItem>
                         <SpecIcon>
                             <svg viewBox="0 0 24 24">
@@ -193,7 +199,10 @@ export default function MobileSuspensionSection({
                             </p>
                         </SpecText>
                     </SpecItem>
-
+                </DetailsPage>
+            }
+            extra={
+                <DetailsPage>
                     <SpecItem>
                         <SpecIcon>
                             <svg viewBox="0 0 24 24">
@@ -208,7 +217,7 @@ export default function MobileSuspensionSection({
                             </p>
                         </SpecText>
                     </SpecItem>
-                </>
+                </DetailsPage>
             }
         />
     );

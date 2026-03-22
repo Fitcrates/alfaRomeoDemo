@@ -14,62 +14,63 @@ import Lighting from "./Lighting";
 
 function TrackModel({ onCollidersLoaded }) {
   const { scene } = useGLTF("/models/drift_race_track_free.glb");
+  const groupRef = useRef();
 
   useEffect(() => {
-    if (scene) {
+    if (scene && groupRef.current) {
       const colliders = [];
-      scene.updateMatrixWorld(true);
+      // CRITICAL: Update world matrix AFTER the group transform is applied
+      // The group has position=[0,-0.85,0] scale=0.7, so all child matrices
+      // must incorporate that transform for raycasting to align correctly
+      groupRef.current.updateMatrixWorld(true);
       scene.traverse((child) => {
         if (child.isMesh) {
           child.receiveShadow = true;
-          child.castShadow = true;
 
           const mat = child.material;
           const name = (child.name || mat?.name || "").toLowerCase();
 
-          // Collect collision meshes
-          if (
-            name.includes("wall") ||
-            name.includes("fence") ||
-            name.includes("barrier") ||
-            name.includes("tire") ||
-            name.includes("curb") ||
-            name.includes("guard") ||
-            name.includes("cube") ||
-            name.includes("cylinder")
-          ) {
-            colliders.push(child);
-          }
-
           if (mat) {
-            if (
-              name.includes("ground") ||
+            const isRoad = name.includes("ground") ||
               name.includes("asphalt") ||
               name.includes("road") ||
               name.includes("floor") ||
               name.includes("plane") ||
-              name.includes("track")
-            ) {
+              name.includes("track");
+
+            if (isRoad) {
+              child.castShadow = false; // Fix: Ground planes shouldn't cast shadows onto themselves! (no drag lines)
               mat.roughness = Math.min(mat.roughness ?? 1, 0.15);
               mat.metalness = Math.max(mat.metalness ?? 0, 0.1);
               mat.envMapIntensity = 1.8;
               mat.needsUpdate = true;
             } else {
+              child.castShadow = true; // Fix: Only obstacles should cast shadows
               mat.envMapIntensity = Math.max(
                 mat.envMapIntensity ?? 1,
                 1.2,
               );
               mat.needsUpdate = true;
+
+              // Only push obstacles with noticeable vertical height using pure geometry bounds
+              child.geometry.computeBoundingBox();
+              const worldBox = new THREE.Box3().copy(child.geometry.boundingBox).applyMatrix4(child.matrixWorld);
+              const height = worldBox.max.y - worldBox.min.y;
+              if (height > 0.25) {
+                child.geometry.computeBoundingSphere(); // Precompute to stop 1st frame stutter
+                colliders.push(child); // Push genuine collidable mesh!
+              }
             }
           }
         }
       });
+      console.log('[TrackModel] Colliders found:', colliders.length);
       if (onCollidersLoaded) onCollidersLoaded(colliders);
     }
   }, [scene, onCollidersLoaded]);
 
   return (
-    <group position={[0, -0.85, 0]} scale={0.7}>
+    <group ref={groupRef} position={[0, -0.85, 0]} scale={0.7}>
       <primitive object={scene} />
     </group>
   );
@@ -81,6 +82,10 @@ function RacetrackCamera({ carPositionRef, driveDirectionRef }) {
   const smoothedPosition = useRef(new THREE.Vector3());
   const smoothedTarget = useRef(new THREE.Vector3());
   const wasDrivingRef = useRef(false);
+  // Pre-allocate reusable vectors to eliminate GC jitter
+  const _targetCamPos = useRef(new THREE.Vector3());
+  const _targetLookAt = useRef(new THREE.Vector3());
+  const _targetCenter = useRef(new THREE.Vector3());
 
   useEffect(() => {
     if (carPositionRef?.current) {
@@ -116,13 +121,16 @@ function RacetrackCamera({ carPositionRef, driveDirectionRef }) {
       const lookAheadDistance = 5;
 
       const speedRatio = THREE.MathUtils.clamp(carSpeed / 15, 0, 1);
-      const baseSmoothTime = 0.4;
-      const fastSmoothTime = 0.15;
-      const smoothTime = THREE.MathUtils.lerp(
-        baseSmoothTime,
-        fastSmoothTime,
+      const baseLerpSpeed = 2.5;
+      const fastLerpSpeed = 8.0;
+      const lerpSpeed = THREE.MathUtils.lerp(
+        baseLerpSpeed,
+        fastLerpSpeed,
         speedRatio,
       );
+      // Ensure delta spikes do not cause snap effect rubberbanding
+      const safeDelta = Math.min(delta, 0.05);
+      const lerpFactor = 1 - Math.exp(-lerpSpeed * safeDelta);
 
       const behindX =
         car.x - Math.sin(car.rotation) * followDistance;
@@ -142,16 +150,8 @@ function RacetrackCamera({ carPositionRef, driveDirectionRef }) {
       const aheadZ =
         car.z + Math.cos(lookRot) * lookAheadDistance;
 
-      const targetCamPos = new THREE.Vector3(
-        behindX,
-        followHeight,
-        behindZ,
-      );
-      const targetLookAt = new THREE.Vector3(
-        aheadX,
-        0.3,
-        aheadZ,
-      );
+      _targetCamPos.current.set(behindX, followHeight, behindZ);
+      _targetLookAt.current.set(aheadX, 0.3, aheadZ);
 
       if (!wasDrivingRef.current) {
         smoothedPosition.current.copy(camera.position);
@@ -160,14 +160,16 @@ function RacetrackCamera({ carPositionRef, driveDirectionRef }) {
         }
       }
 
-      damp3(smoothedPosition.current, targetCamPos, smoothTime, delta);
-      damp3(smoothedTarget.current, targetLookAt, smoothTime, delta);
+      smoothedPosition.current.lerp(_targetCamPos.current, lerpFactor);
+      smoothedTarget.current.lerp(_targetLookAt.current, lerpFactor);
 
       camera.position.copy(smoothedPosition.current);
       camera.lookAt(smoothedTarget.current);
     } else {
-      const targetCenter = new THREE.Vector3(car.x, 0.3, car.z);
-      damp3(smoothedTarget.current, targetCenter, 0.35, delta);
+      const safeDelta = Math.min(delta, 0.05);
+      const photoLerp = 1 - Math.exp(-3 * safeDelta);
+      _targetCenter.current.set(car.x, 0.3, car.z);
+      smoothedTarget.current.lerp(_targetCenter.current, photoLerp);
 
       if (orbitRef.current) {
         orbitRef.current.target.copy(smoothedTarget.current);
@@ -214,14 +216,23 @@ export default function RacetrackScene({
   carColor,
   headlightsOn,
   driveDirectionRef,
+  driveMode = 'dynamic',
+  carPositionRef,
 }) {
   const [colliders, setColliders] = useState([]);
-  const carPositionRef = useRef({
-    x: 0,
-    y: -0.8,
-    z: 0,
-    rotation: 0,
-  });
+
+  // Set initial position for Racetrack
+  useEffect(() => {
+    if (carPositionRef) {
+      carPositionRef.current = {
+        x: 20,
+        y: -0.8,
+        z: 16,
+        rotation: Math.PI * 0.5,
+        speed: 0
+      };
+    }
+  }, [carPositionRef]);
 
   return (
     <>
@@ -238,7 +249,7 @@ export default function RacetrackScene({
       <TrackModel onCollidersLoaded={setColliders} />
 
       <CarModel
-        carPosition={[0, -0.8, 0]}
+        carPosition={[20, -0.8, 16]}
         carRotation={Math.PI * 0.5}
         carColor={carColor}
         headlightsOn={headlightsOn}
@@ -247,6 +258,7 @@ export default function RacetrackScene({
         driveDirectionRef={driveDirectionRef}
         carPositionRef={carPositionRef}
         trackColliders={colliders}
+        driveMode={driveMode}
       />
 
       <RacetrackCamera

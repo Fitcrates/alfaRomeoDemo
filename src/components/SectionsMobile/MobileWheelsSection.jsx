@@ -469,7 +469,10 @@ export default function MobileWheelsSection({ id }) {
                         <TireLabel>Rear Tires</TireLabel>
                         <TireSize>285/30 R19</TireSize>
                     </TireRow>
-
+                </DetailsPage>
+            }
+            extra={
+                <DetailsPage>
                     <BrakeInfo>
                         <BrakeTitle>
                             <svg

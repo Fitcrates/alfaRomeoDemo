@@ -25,11 +25,13 @@ const hintPulse = keyframes`
 
 const Container = styled.div`
   display: flex;
-  flex-direction: column;
+  flex-direction: ${props => props.$horizontal ? 'row' : 'column'};
   align-items: center;
-  gap: 0.75rem;
-  transform: scale(0.8);
-  transform-origin: top center;
+  justify-content: center;
+  gap: ${props => props.$horizontal ? '1.5rem' : '0.75rem'};
+  transform: ${props => props.$horizontal ? 'scale(0.9)' : 'scale(0.8)'};
+  transform-origin: ${props => props.$horizontal ? 'center' : 'top center'};
+  width: 100%;
 `;
 
 const DnaTitle = styled.div`
@@ -221,7 +223,11 @@ const ShockIcon = styled.div`
 `;
 
 const ModeInfo = styled.div`
-  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: ${props => props.$horizontal ? 'flex-start' : 'center'};
+  text-align: ${props => props.$horizontal ? 'left' : 'center'};
+  flex: ${props => props.$horizontal ? 1 : 'none'};
 `;
 
 const ModeName = styled.div`
@@ -238,8 +244,12 @@ const ModeName = styled.div`
 
 const ModeDescription = styled.div`
   font-family: "Rajdhani", sans-serif;
-  font-size: 0.65rem;
+  font-size: ${props => props.$horizontal ? '0.7rem' : '0.65rem'};
   color: rgba(255, 255, 255, 0.5);
+  min-height: 2em;
+  display: flex;
+  align-items: flex-start;
+  justify-content: ${props => props.$horizontal ? 'flex-start' : 'center'};
 `;
 
 function ShockAbsorberSvg({ color = "#C0392B", size = 20 }) {
@@ -281,6 +291,7 @@ const descriptions = {
 export default function MobileDnaModeRotary({
     onModeChange,
     initialMode = "race",
+    horizontal = false,
 }) {
     const [activeMode, setActiveMode] = useState(initialMode);
     const [hasClicked, setHasClicked] = useState(false);
@@ -298,9 +309,8 @@ export default function MobileDnaModeRotary({
     const activeColor = currentMode.color;
 
     return (
-        <Container>
-            <DnaTitle>Alfa™ DNA Pro</DnaTitle>
-
+        <Container $horizontal={horizontal}>
+            {!horizontal && <DnaTitle>Alfa™ DNA Pro</DnaTitle>}
             <CarbonSurround>
                 <OuterBezel>
                     <DialFace onClick={handleClick}>
@@ -332,9 +342,10 @@ export default function MobileDnaModeRotary({
                 </OuterBezel>
             </CarbonSurround>
 
-            <ModeInfo>
+            <ModeInfo $horizontal={horizontal}>
+                {horizontal && <DnaTitle style={{ marginBottom: '8px' }}>Alfa™ DNA Pro</DnaTitle>}
                 <ModeName $color={activeColor}>{currentMode.fullName}</ModeName>
-                <ModeDescription>{descriptions[activeMode]}</ModeDescription>
+                <ModeDescription $horizontal={horizontal}>{descriptions[activeMode]}</ModeDescription>
             </ModeInfo>
         </Container>
     );

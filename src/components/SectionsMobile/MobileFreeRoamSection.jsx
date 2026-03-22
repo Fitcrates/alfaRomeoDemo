@@ -171,7 +171,9 @@ export default function MobileFreeRoamSection({
   onToggleLights,
   onToggleEngine,
   onDrive,
-  forceActive
+  forceActive,
+  driveMode,
+  onDriveModeChange
 }) {
   const sectionRef = useRef(null)
   const [isActive, setIsActive] = useState(false)
@@ -207,6 +209,25 @@ export default function MobileFreeRoamSection({
 
     return () => ctx.revert()
   }, [forceActive, onFreeRoamLeave])
+
+  const modes = [
+    { id: "race", label: "RACE", color: "#ff0000" },
+    { id: "dynamic", label: "DYN", color: "#3b82f6" },
+    { id: "natural", label: "NAT", color: "#ffffff" },
+    { id: "efficient", label: "AWR", color: "#27ae60" },
+  ];
+
+  const currentId = typeof driveMode === 'object' ? driveMode?.id : driveMode;
+
+  const handleModeCycle = () => {
+    const currentIndex = modes.findIndex(m => m.id === (currentId || 'dynamic'));
+    const nextIndex = (currentIndex + 1) % modes.length;
+    if (onDriveModeChange) {
+      onDriveModeChange(modes[nextIndex].id);
+    }
+  }
+
+  const currentModeObj = modes.find(m => m.id === (currentId || 'dynamic')) || modes[1];
 
   const sendCombined = (t, s) => {
     onDrive?.('combined', { throttle: t, steering: s })
@@ -263,6 +284,19 @@ export default function MobileFreeRoamSection({
           </svg>
         </ActionButton>
         
+        {/* Drive mode cycler */}
+        <HeaderActionBtn 
+          onClick={handleModeCycle}
+          style={{ 
+            borderColor: currentModeObj.color, 
+            color: currentModeObj.color,
+            minWidth: '70px',
+            textShadow: `0 0 6px ${currentModeObj.color}60`
+          }}
+        >
+          {currentModeObj.label}
+        </HeaderActionBtn>
+
         {!forceActive && (
           <HeaderActionBtn onClick={stopDriving}>
             Stop
@@ -270,7 +304,7 @@ export default function MobileFreeRoamSection({
         )}
 
         {forceActive && (
-          <div style={{width: '48px'}}></div> // Spacer when in track mode
+          <div style={{width: '64px'}}></div> // Spacer when in track mode
         )}
 
         <ActionButton $active={engineOn} onClick={onToggleEngine} style={{color: engineOn ? '#f39c12' : 'gray'}}>
