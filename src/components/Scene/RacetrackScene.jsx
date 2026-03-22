@@ -1,4 +1,4 @@
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
 import { useThree, useFrame } from "@react-three/fiber";
 import { useGLTF, Environment, OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
@@ -8,27 +8,40 @@ import {
   Vignette,
   Noise,
 } from "@react-three/postprocessing";
+import { damp3 } from "maath/easing";
 import CarModel from "./CarModel";
 import Lighting from "./Lighting";
 
-function TrackModel() {
+function TrackModel({ onCollidersLoaded }) {
   const { scene } = useGLTF("/models/drift_race_track_free.glb");
 
   useEffect(() => {
     if (scene) {
+      const colliders = [];
+      scene.updateMatrixWorld(true);
       scene.traverse((child) => {
         if (child.isMesh) {
           child.receiveShadow = true;
           child.castShadow = true;
 
-          if (child.material) {
-            const mat = child.material;
-            const name = (
-              child.name ||
-              mat.name ||
-              ""
-            ).toLowerCase();
+          const mat = child.material;
+          const name = (child.name || mat?.name || "").toLowerCase();
 
+          // Collect collision meshes
+          if (
+            name.includes("wall") ||
+            name.includes("fence") ||
+            name.includes("barrier") ||
+            name.includes("tire") ||
+            name.includes("curb") ||
+            name.includes("guard") ||
+            name.includes("cube") ||
+            name.includes("cylinder")
+          ) {
+            colliders.push(child);
+          }
+
+          if (mat) {
             if (
               name.includes("ground") ||
               name.includes("asphalt") ||
@@ -51,8 +64,9 @@ function TrackModel() {
           }
         }
       });
+      if (onCollidersLoaded) onCollidersLoaded(colliders);
     }
-  }, [scene]);
+  }, [scene, onCollidersLoaded]);
 
   return (
     <group position={[0, -0.85, 0]} scale={0.7}>
@@ -102,14 +116,13 @@ function RacetrackCamera({ carPositionRef, driveDirectionRef }) {
       const lookAheadDistance = 5;
 
       const speedRatio = THREE.MathUtils.clamp(carSpeed / 15, 0, 1);
-      const baseLerpSpeed = 2.5;
-      const fastLerpSpeed = 8.0;
-      const lerpSpeed = THREE.MathUtils.lerp(
-        baseLerpSpeed,
-        fastLerpSpeed,
+      const baseSmoothTime = 0.4;
+      const fastSmoothTime = 0.15;
+      const smoothTime = THREE.MathUtils.lerp(
+        baseSmoothTime,
+        fastSmoothTime,
         speedRatio,
       );
-      const lerpFactor = 1 - Math.exp(-lerpSpeed * delta);
 
       const behindX =
         car.x - Math.sin(car.rotation) * followDistance;
@@ -147,16 +160,14 @@ function RacetrackCamera({ carPositionRef, driveDirectionRef }) {
         }
       }
 
-      smoothedPosition.current.lerp(targetCamPos, lerpFactor);
-      smoothedTarget.current.lerp(targetLookAt, lerpFactor);
+      damp3(smoothedPosition.current, targetCamPos, smoothTime, delta);
+      damp3(smoothedTarget.current, targetLookAt, smoothTime, delta);
 
       camera.position.copy(smoothedPosition.current);
       camera.lookAt(smoothedTarget.current);
     } else {
-      const photoLerp = 1 - Math.exp(-3 * delta);
       const targetCenter = new THREE.Vector3(car.x, 0.3, car.z);
-
-      smoothedTarget.current.lerp(targetCenter, photoLerp);
+      damp3(smoothedTarget.current, targetCenter, 0.35, delta);
 
       if (orbitRef.current) {
         orbitRef.current.target.copy(smoothedTarget.current);
@@ -204,6 +215,7 @@ export default function RacetrackScene({
   headlightsOn,
   driveDirectionRef,
 }) {
+  const [colliders, setColliders] = useState([]);
   const carPositionRef = useRef({
     x: 0,
     y: -0.8,
@@ -223,7 +235,7 @@ export default function RacetrackScene({
         environmentIntensity={0.65}
       />
 
-      <TrackModel />
+      <TrackModel onCollidersLoaded={setColliders} />
 
       <CarModel
         carPosition={[0, -0.8, 0]}
@@ -234,6 +246,7 @@ export default function RacetrackScene({
         hoodOpen={false}
         driveDirectionRef={driveDirectionRef}
         carPositionRef={carPositionRef}
+        trackColliders={colliders}
       />
 
       <RacetrackCamera

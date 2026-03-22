@@ -16,6 +16,7 @@ import {
   Vignette,
   Noise,
 } from "@react-three/postprocessing";
+import { damp3 } from 'maath/easing';
 import styled from "styled-components";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
@@ -105,14 +106,13 @@ function FreeRoamCamera({ carPositionRef, driveDirectionRef }) {
         0,
         1
       );
-      const baseLerpSpeed = 2.5;
-      const fastLerpSpeed = 8.0;
-      const lerpSpeed = THREE.MathUtils.lerp(
-        baseLerpSpeed,
-        fastLerpSpeed,
+      const baseSmoothTime = 0.4;
+      const fastSmoothTime = 0.15;
+      const smoothTime = THREE.MathUtils.lerp(
+        baseSmoothTime,
+        fastSmoothTime,
         speedRatio
       );
-      const lerpFactor = 1 - Math.exp(-lerpSpeed * delta);
 
       const behindX =
         car.x - Math.sin(car.rotation) * followDistance;
@@ -150,20 +150,19 @@ function FreeRoamCamera({ carPositionRef, driveDirectionRef }) {
         }
       }
 
-      smoothedPosition.current.lerp(targetCamPos, lerpFactor);
-      smoothedTarget.current.lerp(targetLookAt, lerpFactor);
+      damp3(smoothedPosition.current, targetCamPos, smoothTime, delta);
+      damp3(smoothedTarget.current, targetLookAt, smoothTime, delta);
 
       camera.position.copy(smoothedPosition.current);
       camera.lookAt(smoothedTarget.current);
     } else {
-      const photoLerp = 1 - Math.exp(-3 * delta);
       const targetCenter = new THREE.Vector3(
         car.x,
         0.3,
         car.z
       );
 
-      smoothedTarget.current.lerp(targetCenter, photoLerp);
+      damp3(smoothedTarget.current, targetCenter, 0.35, delta);
 
       if (orbitRef.current) {
         orbitRef.current.target.copy(smoothedTarget.current);

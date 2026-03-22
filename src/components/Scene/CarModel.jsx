@@ -2,6 +2,7 @@ import { useRef, useEffect } from 'react'
 import { useGLTF, ContactShadows } from '@react-three/drei'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
+import { damp } from 'maath/easing'
 
 /**
  * CarModel Component
@@ -24,7 +25,8 @@ export default function CarModel({
   freeRoamActive = false,
   hoodOpen = false,
   driveDirectionRef = null,
-  carPositionRef = null // Ref to share car position with camera
+  carPositionRef = null, // Ref to share car position with camera
+  trackColliders = [] // Prop for collision meshes
 }) {
   const groupRef = useRef()
   const modelRef = useRef()
@@ -56,6 +58,7 @@ export default function CarModel({
   const frontWheelsRef = useRef([]) // Front wheels (for steering)
   const rearWheelsRef = useRef([]) // Rear wheels
   const wheelRotationRef = useRef(0)
+  const raycasterRef = useRef(new THREE.Raycaster())
 
   // Car physics state for realistic steering
   const carPhysicsRef = useRef({
@@ -467,18 +470,10 @@ export default function CarModel({
 
         if (Math.abs(steeringInput) > 0.01) {
           // Player is actively steering - interpolate towards target
-          physics.steeringAngle = THREE.MathUtils.lerp(
-            physics.steeringAngle,
-            targetSteering,
-            1 - Math.exp(-config.steeringSpeed * delta)
-          )
+          damp(physics, 'steeringAngle', targetSteering, 0.25, delta);
         } else {
           // Auto-center wheels when no steering input
-          physics.steeringAngle = THREE.MathUtils.lerp(
-            physics.steeringAngle,
-            0,
-            1 - Math.exp(-config.steeringReturnSpeed * delta)
-          )
+          damp(physics, 'steeringAngle', 0, 0.35, delta);
         }
 
         // Clamp steering angle
@@ -527,8 +522,25 @@ export default function CarModel({
           const dx = Math.sin(group.rotation.y) * physics.speed * delta
           const dz = Math.cos(group.rotation.y) * physics.speed * delta
 
-          group.position.x += dx
-          group.position.z += dz
+          let collision = false;
+          if (trackColliders && trackColliders.length > 0 && Math.abs(physics.speed) > 0.1) {
+             const vDir = new THREE.Vector3(dx, 0, dz).normalize();
+             raycasterRef.current.set(new THREE.Vector3(group.position.x, -0.3, group.position.z), vDir);
+             // Ensure it ignores things like ground, look purely forward for walls at chassis height
+             raycasterRef.current.far = 1.35; 
+
+             const intersects = raycasterRef.current.intersectObjects(trackColliders, false);
+             if (intersects.length > 0 && intersects[0].distance < 1.35) {
+               collision = true;
+             }
+          }
+
+          if (collision) {
+             physics.speed *= -0.5; // Bounce
+          } else {
+             group.position.x += dx
+             group.position.z += dz
+          }
         }
 
         // Keep car on the floor

@@ -347,20 +347,10 @@ export default function CameraController({
       currentConfig.fov +
       (nextConfig.fov - currentConfig.fov) * easedProgress;
 
-    const lerpSpeed = 4;
-    const lerpFactor = 1 - Math.exp(-lerpSpeed * delta);
-
-    currentValues.current.position.lerp(
-      targetValues.current.position,
-      lerpFactor,
-    );
-    currentValues.current.target.lerp(
-      targetValues.current.target,
-      lerpFactor,
-    );
-    currentValues.current.fov +=
-      (targetValues.current.fov - currentValues.current.fov) *
-      lerpFactor;
+    // Perfect mathematical sync to GSAP's scrub without R3F duplicate exponential smoothing
+    currentValues.current.position.copy(targetValues.current.position);
+    currentValues.current.target.copy(targetValues.current.target);
+    currentValues.current.fov = targetValues.current.fov;
 
     camera.position.copy(currentValues.current.position);
     camera.lookAt(currentValues.current.target);
