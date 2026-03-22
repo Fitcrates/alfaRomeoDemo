@@ -375,8 +375,12 @@ export default function CarModel({
   }, [carColor])
 
   // Smooth animation - use delta-based lerp for frame-rate independence
-  useFrame((state, delta) => {
+  useFrame((state, dt) => {
     if (!groupRef.current) return
+
+    // Cap delta time to prevent physics explosions/rubberbanding on frame drops
+    // Limits max delta to equivalent of ~20fps (0.05s) minimum frame rate
+    const delta = Math.min(dt, 0.05)
 
     const current = currentValues.current
 

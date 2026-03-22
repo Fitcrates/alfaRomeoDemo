@@ -82,6 +82,8 @@ import { useRef, useEffect } from 'react'
 import { useThree, useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 
+
+const isMobile = () => window.innerWidth <= 768;
 /**
  * SECTION CAMERA CONFIGURATIONS
  * 
@@ -96,6 +98,12 @@ export const CAMERA_CONFIGS = {
     position: [5, 1.5, 7],      // [x, y, z] - Front-right, elevated
     target: [0, 0, 0],          // Look at car center
     fov: 45,                    // Standard perspective
+    mobile: {
+      position: [4, 2.2, 8],
+      target: [0, -0.5, 0],
+      fov: 50,
+    },
+
     // ADJUSTMENTS:
     // - Move camera closer: reduce z (e.g., [5, 1.5, 5])
     // - More dramatic low angle: reduce y (e.g., [5, 0.5, 7])
@@ -109,6 +117,11 @@ export const CAMERA_CONFIGS = {
     position: [3, 1.2, 6],      // Closer front view
     target: [0, 0.3, 1],        // Look slightly at hood area
     fov: 50,                    // Slightly wider to show engine context
+    mobile: {
+      position: [2.5, 1.8, 7],
+      target: [0, -0.2, 1],
+      fov: 52,
+    },
     // ADJUSTMENTS:
     // - Focus more on grille: target [0, 0.5, 2]
     // - Lower dramatic angle: position [3, 0.4, 6]
@@ -121,6 +134,11 @@ export const CAMERA_CONFIGS = {
     position: [-5, 0.8, 4],     // Left side, low angle
     target: [0, 0, 0],          // Car center
     fov: 48,
+    mobile: {
+      position: [-4, 1.8, 5],
+      target: [0, -0.5, 0],
+      fov: 50,
+    },
     // ADJUSTMENTS:
     // - Show rear suspension: position [-5, 0.8, -3]
     // - Lower to emphasize stance: position [-5, 0.3, 4]
@@ -133,6 +151,12 @@ export const CAMERA_CONFIGS = {
     position: [4, 0.4, 3],      // Low, front-right angle
     target: [0.8, 0.3, 1.5],    // Focus on front-right wheel area
     fov: 55,                    // Wider to show wheel detail
+    mobile: {
+      position: [3.5, 1.2, 4],
+      target: [0.5, -0.2, 1],
+      fov: 55,
+    },
+
     // ADJUSTMENTS:
     // - Focus on rear wheel: position [4, 0.4, -2], target [0.8, 0.3, -1.5]
     // - More dramatic: position [3, 0.2, 2]
@@ -145,6 +169,11 @@ export const CAMERA_CONFIGS = {
     position: [3.5, 1.3, 1.5],  // Right side, cabin level
     target: [0, 0.9, 0.3],      // Look at interior/dashboard area
     fov: 52,
+    mobile: {
+      position: [3, 1.8, 2],
+      target: [0, 0.4, 0.3],
+      fov: 52,
+    },
     // ADJUSTMENTS:
     // - Closer to window: position [2.5, 1.2, 1]
     // - Show more dashboard: target [0, 0.8, 0.8]
@@ -157,6 +186,11 @@ export const CAMERA_CONFIGS = {
     position: [1.5, 3.5, 3],    // Above and in front
     target: [0, 0.5, 1.5],      // Look at engine bay area
     fov: 50,
+    mobile: {
+      position: [1.5, 3.8, 3.5],
+      target: [0, 0, 1.5],
+      fov: 52,
+    },
     // ADJUSTMENTS:
     // - More top-down: position [0, 4, 2]
     // - Angled view: position [2.5, 3, 2.5]
@@ -169,6 +203,11 @@ export const CAMERA_CONFIGS = {
     position: [-8, 0.5, -7],    // Left-rear angle
     target: [2, -2, -1],        // Car center, slightly low
     fov: 55,
+    mobile: {
+      position: [-6, 1.5, -6],
+      target: [1, -1.5, -1],
+      fov: 55,
+    },
     // ADJUSTMENTS:
     // - Show more rear: position [0, 1.5, -7]
     // - Dramatic low: position [-4, 0.5, -5]
@@ -181,6 +220,11 @@ export const CAMERA_CONFIGS = {
     position: [5, 2, 6],        // Classic 3/4 view, good starting point
     target: [0, 0, 0],
     fov: 45,
+    mobile: {
+      position: [5, 2, 6],
+      target: [0, 0, 0],
+      fov: 48,
+    },
     // Note: In free roam, OrbitControls takes over after initial position
   },
 
@@ -191,6 +235,11 @@ export const CAMERA_CONFIGS = {
     position: [0, 1.5, 8],      // Direct front view
     target: [0, 0, 0],
     fov: 42,                    // Slightly telephoto for compression
+    mobile: {
+      position: [0, 2, 9],
+      target: [0, -0.5, 0],
+      fov: 46,
+    },
     // ADJUSTMENTS:
     // - More cinematic: fov: 35, position: [0, 1.2, 10]
   },
@@ -222,97 +271,110 @@ const SECTION_ORDER = [
  * @param {React.RefObject} props.scrollProgressRef - Ref containing scroll progress (0-1)
  * @param {boolean} props.freeRoamActive - When true, camera control is handed to OrbitControls
  */
-export default function CameraController({ scrollProgressRef, freeRoamActive }) {
-  const { camera } = useThree()
+function getConfig(sectionId) {
+  const config = CAMERA_CONFIGS[sectionId];
+  if (isMobile() && config.mobile) {
+    return config.mobile;
+  }
+  return config;
+}
 
-  // Current interpolated values for smooth transitions
+export default function CameraController({
+  scrollProgressRef,
+  freeRoamActive,
+}) {
+  const { camera } = useThree();
+
   const currentValues = useRef({
     position: new THREE.Vector3(5, 1.5, 7),
     target: new THREE.Vector3(0, 0, 0),
-    fov: 45
-  })
+    fov: 45,
+  });
 
-  // Target values that we're interpolating towards
   const targetValues = useRef({
     position: new THREE.Vector3(5, 1.5, 7),
     target: new THREE.Vector3(0, 0, 0),
-    fov: 45
-  })
+    fov: 45,
+  });
 
-  // Initialize camera position
   useEffect(() => {
-    const heroConfig = CAMERA_CONFIGS.hero
-    camera.position.set(...heroConfig.position)
-    camera.lookAt(...heroConfig.target)
-    camera.fov = heroConfig.fov
-    camera.updateProjectionMatrix()
+    const heroConfig = getConfig("hero");
+    camera.position.set(...heroConfig.position);
+    camera.lookAt(...heroConfig.target);
+    camera.fov = heroConfig.fov;
+    camera.updateProjectionMatrix();
 
-    currentValues.current.position.set(...heroConfig.position)
-    currentValues.current.target.set(...heroConfig.target)
-    currentValues.current.fov = heroConfig.fov
-  }, [camera])
+    currentValues.current.position.set(...heroConfig.position);
+    currentValues.current.target.set(...heroConfig.target);
+    currentValues.current.fov = heroConfig.fov;
+  }, [camera]);
 
   useFrame((state, delta) => {
-    // Skip camera animation when in free roam (OrbitControls handles it)
-    if (freeRoamActive) return
+    if (freeRoamActive) return;
 
-    const scrollProgress = scrollProgressRef?.current || 0
-    const numSections = SECTION_ORDER.length
+    const scrollProgress = scrollProgressRef?.current || 0;
+    const numSections = SECTION_ORDER.length;
 
-    // Calculate which sections we're between
-    const exactSection = scrollProgress * (numSections - 1)
-    const currentSectionIndex = Math.floor(exactSection)
-    const nextSectionIndex = Math.min(currentSectionIndex + 1, numSections - 1)
-    const sectionProgress = exactSection - currentSectionIndex
+    const exactSection = scrollProgress * (numSections - 1);
+    const currentSectionIndex = Math.floor(exactSection);
+    const nextSectionIndex = Math.min(
+      currentSectionIndex + 1,
+      numSections - 1,
+    );
+    const sectionProgress = exactSection - currentSectionIndex;
 
-    // Get section IDs
-    const currentSectionId = SECTION_ORDER[currentSectionIndex]
-    const nextSectionId = SECTION_ORDER[nextSectionIndex]
+    const currentSectionId = SECTION_ORDER[currentSectionIndex];
+    const nextSectionId = SECTION_ORDER[nextSectionIndex];
 
-    // Get camera configs
-    const currentConfig = CAMERA_CONFIGS[currentSectionId]
-    const nextConfig = CAMERA_CONFIGS[nextSectionId]
+    const currentConfig = getConfig(currentSectionId);
+    const nextConfig = getConfig(nextSectionId);
 
-    // Interpolate target values based on scroll progress
-    // Using smooth easing for more natural transitions
-    const easedProgress = smoothstep(sectionProgress)
+    const easedProgress = smoothstep(sectionProgress);
 
     targetValues.current.position.lerpVectors(
       new THREE.Vector3(...currentConfig.position),
       new THREE.Vector3(...nextConfig.position),
-      easedProgress
-    )
+      easedProgress,
+    );
 
     targetValues.current.target.lerpVectors(
       new THREE.Vector3(...currentConfig.target),
       new THREE.Vector3(...nextConfig.target),
-      easedProgress
-    )
+      easedProgress,
+    );
 
-    targetValues.current.fov = currentConfig.fov + (nextConfig.fov - currentConfig.fov) * easedProgress
+    targetValues.current.fov =
+      currentConfig.fov +
+      (nextConfig.fov - currentConfig.fov) * easedProgress;
 
-    // Smooth interpolation towards target values (frame-rate independent)
-    const lerpSpeed = 4 // Lower = smoother but slower, Higher = snappier
-    const lerpFactor = 1 - Math.exp(-lerpSpeed * delta)
+    const lerpSpeed = 4;
+    const lerpFactor = 1 - Math.exp(-lerpSpeed * delta);
 
-    currentValues.current.position.lerp(targetValues.current.position, lerpFactor)
-    currentValues.current.target.lerp(targetValues.current.target, lerpFactor)
-    currentValues.current.fov += (targetValues.current.fov - currentValues.current.fov) * lerpFactor
+    currentValues.current.position.lerp(
+      targetValues.current.position,
+      lerpFactor,
+    );
+    currentValues.current.target.lerp(
+      targetValues.current.target,
+      lerpFactor,
+    );
+    currentValues.current.fov +=
+      (targetValues.current.fov - currentValues.current.fov) *
+      lerpFactor;
 
-    // Apply to camera
-    camera.position.copy(currentValues.current.position)
-    camera.lookAt(currentValues.current.target)
+    camera.position.copy(currentValues.current.position);
+    camera.lookAt(currentValues.current.target);
 
-    // Update FOV if changed
-    if (Math.abs(camera.fov - currentValues.current.fov) > 0.01) {
-      camera.fov = currentValues.current.fov
-      camera.updateProjectionMatrix()
+    if (
+      Math.abs(camera.fov - currentValues.current.fov) > 0.01
+    ) {
+      camera.fov = currentValues.current.fov;
+      camera.updateProjectionMatrix();
     }
-  })
+  });
 
-  return null
+  return null;
 }
-
 /**
  * Smoothstep easing function for natural transitions
  * Creates smooth acceleration and deceleration

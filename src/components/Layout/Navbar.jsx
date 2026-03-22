@@ -352,8 +352,68 @@ const MobileMenuButton = styled.button`
   }
 `
 
+const MobileOverlay = styled.div`
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 10, 12, 0.98);
+  backdrop-filter: blur(20px);
+  z-index: 90;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 2rem;
+  opacity: ${props => props.$isOpen ? 1 : 0};
+  pointer-events: ${props => props.$isOpen ? 'auto' : 'none'};
+  transition: opacity 0.4s ease;
+  
+  @media (min-width: 769px) {
+    display: none;
+  }
+`
+
+const MobileNavLink = styled.button`
+  background: none;
+  border: none;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 1.25rem;
+  color: rgba(255, 255, 255, 0.8);
+  text-decoration: none;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  
+  &:active {
+    color: #c0392b;
+    transform: scale(0.95);
+  }
+`
+
+const MobileMenuExitButton = styled.button`
+  position: absolute;
+  top: 1rem;
+  right: 1.5rem;
+  background: none;
+  border: none;
+  color: white;
+  font-size: 2rem;
+  cursor: pointer;
+  padding: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  svg {
+    width: 32px;
+    height: 32px;
+    fill: currentColor;
+  }
+`
+
 export default function Navbar({ onTakeToRacetrack, inRacetrack }) {
   const [scrolled, setScrolled] = useState(false)
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
   useEffect(() => {
     const handleScroll = () => {
@@ -410,11 +470,34 @@ export default function Navbar({ onTakeToRacetrack, inRacetrack }) {
         </CTAGroup>
       )}
 
-      <MobileMenuButton aria-label="Menu">
+      <MobileMenuButton aria-label="Menu" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
         <span />
         <span />
         <span />
       </MobileMenuButton>
+
+      <MobileOverlay $isOpen={isMobileMenuOpen}>
+        <MobileMenuExitButton onClick={() => setIsMobileMenuOpen(false)}>
+          <svg viewBox="0 0 24 24">
+            <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+          </svg>
+        </MobileMenuExitButton>
+
+        <MobileNavLink onClick={() => { scrollToSection('engine'); setIsMobileMenuOpen(false); }}>Performance</MobileNavLink>
+        <MobileNavLink onClick={() => { scrollToSection('suspension'); setIsMobileMenuOpen(false); }}>Dynamics</MobileNavLink>
+        <MobileNavLink onClick={() => { scrollToSection('interior'); setIsMobileMenuOpen(false); }}>Interior</MobileNavLink>
+        <MobileNavLink onClick={() => { scrollToSection('enginebay'); setIsMobileMenuOpen(false); }}>Engine Bay</MobileNavLink>
+        <MobileNavLink onClick={() => { scrollToSection('gallery'); setIsMobileMenuOpen(false); }}>Colors</MobileNavLink>
+        <MobileNavLink onClick={() => { scrollToSection('contact'); setIsMobileMenuOpen(false); }}>Test Drive</MobileNavLink>
+        <MobileNavLink onClick={() => { scrollToSection('footer'); setIsMobileMenuOpen(false); }}>Credits</MobileNavLink>
+        {/* Track Mode button inside mobile menu as well */}
+        {!inRacetrack && (
+          <TrackButton onClick={() => { onTakeToRacetrack(); setIsMobileMenuOpen(false); }} style={{marginTop: '1rem'}}>
+            <StatusDot />
+            Track Mode
+          </TrackButton>
+        )}
+      </MobileOverlay>
     </Nav>
   )
 }
