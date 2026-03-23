@@ -1,21 +1,25 @@
 import { useRef, useEffect } from 'react'
-import { useGLTF, ContactShadows } from '@react-three/drei'
+import { useGLTF } from '@react-three/drei'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { damp } from 'maath/easing'
 
 /**
  * CarModel Component
- * 
+ *
  * Renders the Alfa Romeo Giulia 3D model with lighting effects.
- * 
+ *
  * @param {Array} carPosition - [x, y, z] Fixed position of the car
  * @param {number} carRotation - Y-axis rotation in radians
  * @param {string} carColor - Hex color for car paint
  * @param {boolean} headlightsOn - Whether headlights are on
  * @param {boolean} freeRoamActive - Whether free roam mode is active
  * @param {boolean} hoodOpen - Whether hood transparency is active
- * @param {string} driveDirection - Drive direction in free roam ('forward', 'backward', 'left', 'right')
+ * @param {object} driveDirectionRef - Ref with { throttle, steering } for drive input
+ * @param {object} carPositionRef - Ref to share car position/speed with camera
+ * @param {Array} trackColliders - Prop for wall/barrier collision meshes
+ * @param {Array} terrainMeshes - Prop for road/ground meshes used for terrain-following raycast
+ * @param {string} driveMode - DNA drive mode: 'efficient', 'natural', 'dynamic', 'race'
  */
 export default function CarModel({
   carPosition = [0, -0.8, 0],
@@ -25,9 +29,11 @@ export default function CarModel({
   freeRoamActive = false,
   hoodOpen = false,
   driveDirectionRef = null,
-  carPositionRef = null, // Ref to share car position with camera
-  trackColliders = [], // Prop for collision meshes
-  driveMode = 'dynamic' // DNA drive mode: 'efficient', 'natural', 'dynamic', 'race'
+  carPositionRef = null,
+  trackColliders = [],
+  terrainMeshes = [],
+  terrainTuning = null,
+  driveMode = 'dynamic',
 }) {
   const groupRef = useRef()
   const modelRef = useRef()
@@ -61,26 +67,110 @@ export default function CarModel({
   const rearWheelsRef = useRef([]) // Rear wheels
   const wheelRotationRef = useRef(0)
   const raycasterRef = useRef(new THREE.Raycaster())
+  const terrainRaycasterRef = useRef(new THREE.Raycaster())
   const collisionFrameRef = useRef(0)
+
   // Pre-allocate reusable vectors to avoid GC pressure every frame
   const _forwardDir = useRef(new THREE.Vector3())
   const _rayDir = useRef(new THREE.Vector3())
   const _rayOrigin = useRef(new THREE.Vector3())
 
-  // Car physics state for realistic steering
+  // Terrain raycasting vectors
+  const _terrainRayOrigin = useRef(new THREE.Vector3())
+  const _terrainRayDown = useRef(new THREE.Vector3(0, -1, 0))
+  const _terrainNormal = useRef(new THREE.Vector3())
+  const terrainFrameRef = useRef(0)
+  // Smoothed terrain Y to prevent jitter on mesh seams
+  const _smoothedTerrainY = useRef(null)
+  // Smoothed pitch (X rotation) to match terrain slope
+  const _smoothedPitch = useRef(0)
+  // Frame counter to throttle expensive slope raycasts
+  const _slopeFrame = useRef(0)
+
   const carPhysicsRef = useRef({
+    velX: 0,
+    velZ: 0,
     speed: 0,
     steeringAngle: 0, // Current wheel angle in radians
     targetSteering: 0, // Target steering from input
   })
 
+  // Handbrake + burnout key state
+  const spacePressed = useRef(false)
+  const wPressed = useRef(false)
+  const sPressed = useRef(false)
+  useEffect(() => {
+    const onD = (e) => {
+      if (e.code === 'Space') spacePressed.current = true
+      if (e.code === 'KeyW' || e.code === 'ArrowUp')
+        wPressed.current = true
+      if (e.code === 'KeyS' || e.code === 'ArrowDown')
+        sPressed.current = true
+    }
+    const onU = (e) => {
+      if (e.code === 'Space') spacePressed.current = false
+      if (e.code === 'KeyW' || e.code === 'ArrowUp')
+        wPressed.current = false
+      if (e.code === 'KeyS' || e.code === 'ArrowDown')
+        sPressed.current = false
+    }
+
+    // Release all internal key states when the window loses focus.
+    // Without this, alt-tab or DevTools opening mid-drive leaves
+    // spacePressed / wPressed / sPressed stuck true indefinitely.
+    const resetOnBlur = () => {
+      spacePressed.current = false
+      wPressed.current = false
+      sPressed.current = false
+    }
+    const handleVisibilityChange = () => {
+      if (document.hidden) resetOnBlur()
+    }
+
+    window.addEventListener('keydown', onD)
+    window.addEventListener('keyup', onU)
+    window.addEventListener('blur', resetOnBlur)
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => {
+      window.removeEventListener('keydown', onD)
+      window.removeEventListener('keyup', onU)
+      window.removeEventListener('blur', resetOnBlur)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      resetOnBlur()
+    }
+  }, [])
+
   // Car configuration (Giulia wheelbase ~2.82m)
   // DNA drive mode profiles
   const DRIVE_MODES = {
-    efficient: { maxSpeed: 21.6, acceleration: 5, braking: 20, friction: 18, label: 'All Weather' },
-    natural: { maxSpeed: 33.6, acceleration: 7, braking: 22, friction: 16, label: 'Natural' },
-    dynamic: { maxSpeed: 48, acceleration: 10, braking: 25, friction: 14, label: 'Dynamic' },
-    race: { maxSpeed: 66, acceleration: 14, braking: 30, friction: 12, label: 'Race' },
+    efficient: {
+      maxSpeed: 66,
+      acceleration: 5,
+      braking: 20,
+      friction: 18,
+      label: 'All Weather',
+    },
+    natural: {
+      maxSpeed: 66,
+      acceleration: 8,
+      braking: 22,
+      friction: 16,
+      label: 'Natural',
+    },
+    dynamic: {
+      maxSpeed: 66,
+      acceleration: 11,
+      braking: 25,
+      friction: 14,
+      label: 'Dynamic',
+    },
+    race: {
+      maxSpeed: 66,
+      acceleration: 15,
+      braking: 30,
+      friction: 12,
+      label: 'Race',
+    },
   }
 
   const CAR_CONFIG = {
@@ -95,18 +185,56 @@ export default function CarModel({
     steeringReturnSpeed: 2,
   }
 
-  const FLOOR_Y = -0.78
-  const { scene, animations } = useGLTF('/models/giulia.glb')
+  // CAR_RIDE_HEIGHT: keep at 0 — the car bounding box positions tire bottoms
+  // at y=0 of the group, so surfaceY+0 = tires exactly on the road.
+  // A tiny positive value adds z-fight clearance but causes visible float.
+  const CAR_RIDE_HEIGHT = 0.0
 
+  // Fallback Y used when no terrain hit is found (e.g. flat drift track)
+  const FALLBACK_Y = -0.8
+
+  const FLOOR_Y = -0.78
+  const TERRAIN_DEFAULTS = {
+    terrainRaycastModulo: 2,
+    collisionRaycastModulo: 3,
+    slopeRaycastModulo: 2,
+    maxStepUp: 4.0,
+    maxPitchDeg: 0,
+    minTerrainNormalY: 0.5,
+    enableSlopePitch: false,
+    maxSurfaceDeltaFromExpected: Infinity,
+    maxRisePerSecond: Infinity,
+    maxFallPerSecond: Infinity,
+    minYClamp: -6,
+    maxYClamp: 8,
+    disableTerrainFollow: false,
+    fixedRideY: null,
+    enableHeadlightShadows: true,
+  }
+  const terrainConfig = {
+    ...TERRAIN_DEFAULTS,
+    ...(terrainTuning || {}),
+  }
+  const { scene, animations } = useGLTF('/models/giulia.glb')
 
   // Debug: Check for animations and openable parts
   useEffect(() => {
     if (process.env.NODE_ENV === 'development' && scene) {
-      console.log('=== GLB ANIMATIONS ===', animations?.length || 0, animations)
+      console.log(
+        '=== GLB ANIMATIONS ===',
+        animations?.length || 0,
+        animations
+      )
       const openableParts = []
       scene.traverse((child) => {
         const name = (child.name || '').toLowerCase()
-        if (name.includes('hood') || name.includes('door') || name.includes('trunk') || name.includes('bonnet') || name.includes('engine')) {
+        if (
+          name.includes('hood') ||
+          name.includes('door') ||
+          name.includes('trunk') ||
+          name.includes('bonnet') ||
+          name.includes('engine')
+        ) {
           openableParts.push({ name: child.name, type: child.type })
         }
       })
@@ -119,7 +247,7 @@ export default function CarModel({
     rotationY: carRotation,
     positionX: carPosition[0],
     positionY: carPosition[1],
-    positionZ: carPosition[2]
+    positionZ: carPosition[2],
   })
 
   // Base position/rotation refs for resetting after free roam
@@ -134,8 +262,15 @@ export default function CarModel({
 
   useEffect(() => {
     if (groupRef.current) {
-      groupRef.current.position.set(carPosition[0], carPosition[1], carPosition[2]);
-      groupRef.current.rotation.y = carRotation;
+      groupRef.current.position.set(
+        carPosition[0],
+        carPosition[1],
+        carPosition[2]
+      )
+      // YXZ order: heading first, then local pitch, then local roll.
+      // This makes group.rotation.x behave as car-local pitch at any heading.
+      groupRef.current.rotation.order = 'YXZ'
+      groupRef.current.rotation.y = carRotation
     }
   }, []) // Initialize physical position properly on mount
 
@@ -157,10 +292,15 @@ export default function CarModel({
       if (child.isMesh) {
         const materialName = child.material?.name || ''
         const meshName = child.name || ''
-        const isGlassLike = /glass|window|windshield/i.test(`${materialName} ${meshName}`)
+        const isGlassLike = /glass|window|windshield/i.test(
+          `${materialName} ${meshName}`
+        )
 
         // Detect wheel meshes by material name and position
-        if (materialName.includes('Wheel') || materialName.includes('wheel')) {
+        if (
+          materialName.includes('Wheel') ||
+          materialName.includes('wheel')
+        ) {
           // Get the wheel's position in model-local space (not world space)
           // This is stable regardless of camera or car rotation
           const localPos = child.position.clone()
@@ -182,7 +322,9 @@ export default function CarModel({
 
           // Debug log wheel positions
           if (process.env.NODE_ENV === 'development') {
-            console.log(`Wheel: ${meshName}, localZ: ${localPos.z.toFixed(2)}, isFront: ${child.userData.isFrontWheel}, isLeft: ${child.userData.isLeftWheel}`)
+            console.log(
+              `Wheel: ${meshName}, localZ: ${localPos.z.toFixed(2)}, isFront: ${child.userData.isFrontWheel}, isLeft: ${child.userData.isLeftWheel}`
+            )
           }
         }
 
@@ -250,8 +392,11 @@ export default function CarModel({
 
           // FIX: Ensure interior materials render properly
           // Interior materials marked as transparent with opacity 1 need proper handling
-          if (matName === 'QuadrifoglioAlfaRomeo_GiuliaQuadrifoglio_2017InteriorA_Material1' ||
-            matName === 'color_Int') {
+          if (
+            matName ===
+            'QuadrifoglioAlfaRomeo_GiuliaQuadrifoglio_2017InteriorA_Material1' ||
+            matName === 'color_Int'
+          ) {
             // These are solid interior materials, not actually transparent
             child.material.transparent = false
             child.material.opacity = 1
@@ -263,7 +408,8 @@ export default function CarModel({
           // Keep original material settings - we'll use lens flares instead of shader glow
           if (
             matName === 'emiss' ||
-            matName === 'QuadrifoglioAlfaRomeo_GiuliaQuadrifoglio_2017LightA_Material1'
+            matName ===
+            'QuadrifoglioAlfaRomeo_GiuliaQuadrifoglio_2017LightA_Material1'
           ) {
             child.material.toneMapped = false
             // Don't modify emissive - keep original lamp appearance
@@ -277,11 +423,18 @@ export default function CarModel({
 
             // Check if this is a hood/bonnet mesh by name
             const meshNameLower = meshName.toLowerCase()
-            if (meshNameLower.includes('hood') || meshNameLower.includes('bonnet') || meshNameLower.includes('cofano')) {
+            if (
+              meshNameLower.includes('hood') ||
+              meshNameLower.includes('bonnet') ||
+              meshNameLower.includes('cofano')
+            ) {
               child.material.transparent = true
               child.material.depthWrite = true
               child.material.opacity = 1.0
-              hoodMaterialsRef.current.push({ mesh: child, material: child.material })
+              hoodMaterialsRef.current.push({
+                mesh: child,
+                material: child.material,
+              })
               console.log('[Hood Mesh] Found by name:', meshName)
             }
 
@@ -293,7 +446,10 @@ export default function CarModel({
               // Store reference for potential body transparency
               if (!child.material.userData.isBodyPaint) {
                 child.material.userData.isBodyPaint = true
-                hoodMaterialsRef.current.push({ mesh: child, material: child.material })
+                hoodMaterialsRef.current.push({
+                  mesh: child,
+                  material: child.material,
+                })
                 console.log('[Body Paint] Found:', meshName, matName)
               }
             }
@@ -335,7 +491,6 @@ export default function CarModel({
     // Store scale for light positioning
     lightsRef.current.scale = scale
     lightsRef.current.wrapper = wrapper
-
   }, [scene])
 
   // Store hoodOpen in ref for useFrame access
@@ -377,10 +532,18 @@ export default function CarModel({
 
     modelRef.current.traverse((child) => {
       if (child.isMesh && child.material) {
-        const name = (child.material.name || child.name || '').toLowerCase()
+        const name = (
+          child.material.name ||
+          child.name ||
+          ''
+        ).toLowerCase()
 
         // Handle car body paint specifically
-        if (name.includes('body') || name.includes('paint') || name.includes('car')) {
+        if (
+          name.includes('body') ||
+          name.includes('paint') ||
+          name.includes('car')
+        ) {
           if (child.material.color) {
             child.material.color.set(carColor)
           }
@@ -418,23 +581,35 @@ export default function CarModel({
     // In free roam, car can be moved by drive controls
     if (!freeRoamActive) {
       // Smoothly return to base position if coming back from free roam
-      current.rotationY += (baseRotationRef.current - current.rotationY) * lerpFactor
-      current.positionX += (basePositionRef.current[0] - current.positionX) * lerpFactor
-      current.positionY += (basePositionRef.current[1] - current.positionY) * lerpFactor
-      current.positionZ += (basePositionRef.current[2] - current.positionZ) * lerpFactor
+      current.rotationY +=
+        (baseRotationRef.current - current.rotationY) * lerpFactor
+      current.positionX +=
+        (basePositionRef.current[0] - current.positionX) * lerpFactor
+      current.positionY +=
+        (basePositionRef.current[1] - current.positionY) * lerpFactor
+      current.positionZ +=
+        (basePositionRef.current[2] - current.positionZ) * lerpFactor
     }
 
     // Smooth light transition for engine start/stop
     const targetHeadlightLevel = headlightsOn ? 1 : 0
-    headlightLevelRef.current += (targetHeadlightLevel - headlightLevelRef.current) * lerpFactor
+    headlightLevelRef.current +=
+      (targetHeadlightLevel - headlightLevelRef.current) * lerpFactor
 
     // Brake light logic
-    const throttleInputLocal = (driveDirectionRef?.current?.throttle === 'backward') ? -1 :
-      (driveDirectionRef?.current?.throttle === 'forward') ? 1 : 0;
+    const throttleInputLocal =
+      driveDirectionRef?.current?.throttle === 'backward'
+        ? -1
+        : driveDirectionRef?.current?.throttle === 'forward'
+          ? 1
+          : 0
     // If pressing backward/brake while still rolling forward, or standing still holding brake
-    const isBraking = throttleInputLocal === -1 && (carPhysicsRef.current?.speed || 0) > -0.1;
-    const targetBrakeLevel = isBraking ? 1 : 0;
-    brakeLightLevelRef.current += (targetBrakeLevel - brakeLightLevelRef.current) * (lerpFactor * 2.5);
+    const isBraking =
+      throttleInputLocal === -1 &&
+      (carPhysicsRef.current?.speed || 0) > -0.1
+    const targetBrakeLevel = isBraking ? 1 : 0
+    brakeLightLevelRef.current +=
+      (targetBrakeLevel - brakeLightLevelRef.current) * (lerpFactor * 2.5)
 
     // Update bloom glow emissive intensity based on headlight level
     // High emissiveIntensity triggers bloom post-processing
@@ -446,29 +621,38 @@ export default function CarModel({
 
     const frontGlowOpacity = headlightLevelRef.current // 0 when off, 1 when on
     // Rear flares must also light up during braking even if headlights are off!
-    const rearGlowOpacity = Math.max(headlightLevelRef.current, brakeLightLevelRef.current)
+    const rearGlowOpacity = Math.max(
+      headlightLevelRef.current,
+      brakeLightLevelRef.current
+    )
     if (leftLensFlareRef.current?.material) {
-      leftLensFlareRef.current.material.emissiveIntensity = frontGlowIntensity
+      leftLensFlareRef.current.material.emissiveIntensity =
+        frontGlowIntensity
       leftLensFlareRef.current.material.opacity = frontGlowOpacity
     }
     if (rightLensFlareRef.current?.material) {
-      rightLensFlareRef.current.material.emissiveIntensity = frontGlowIntensity
+      rightLensFlareRef.current.material.emissiveIntensity =
+        frontGlowIntensity
       rightLensFlareRef.current.material.opacity = frontGlowOpacity
     }
     if (leftRearFlareRef.current?.material) {
-      leftRearFlareRef.current.material.emissiveIntensity = rearGlowIntensity
+      leftRearFlareRef.current.material.emissiveIntensity =
+        rearGlowIntensity
       leftRearFlareRef.current.material.opacity = rearGlowOpacity
     }
     if (rightRearFlareRef.current?.material) {
-      rightRearFlareRef.current.material.emissiveIntensity = rearGlowIntensity
+      rightRearFlareRef.current.material.emissiveIntensity =
+        rearGlowIntensity
       rightRearFlareRef.current.material.opacity = rearGlowOpacity
     }
     if (leftRearFlare2Ref.current?.material) {
-      leftRearFlare2Ref.current.material.emissiveIntensity = rearGlowIntensity
+      leftRearFlare2Ref.current.material.emissiveIntensity =
+        rearGlowIntensity
       leftRearFlare2Ref.current.material.opacity = rearGlowOpacity
     }
     if (rightRearFlare2Ref.current?.material) {
-      rightRearFlare2Ref.current.material.emissiveIntensity = rearGlowIntensity
+      rightRearFlare2Ref.current.material.emissiveIntensity =
+        rearGlowIntensity
       rightRearFlare2Ref.current.material.opacity = rearGlowOpacity
     }
 
@@ -478,7 +662,8 @@ export default function CarModel({
       if (item.material) {
         // Smoothly interpolate opacity
         const currentOpacity = item.material.opacity
-        const newOpacity = currentOpacity + (targetOpacity - currentOpacity) * 0.15
+        const newOpacity =
+          currentOpacity + (targetOpacity - currentOpacity) * 0.15
         item.material.opacity = newOpacity
       }
     })
@@ -494,7 +679,10 @@ export default function CarModel({
         let throttleInput = 0
         let steeringInput = 0
 
-        const driveDir = driveDirectionRef?.current || { throttle: null, steering: null }
+        const driveDir = driveDirectionRef?.current || {
+          throttle: null,
+          steering: null,
+        }
 
         if (driveDir.throttle === 'forward') throttleInput = 1
         else if (driveDir.throttle === 'backward') throttleInput = -1
@@ -502,20 +690,34 @@ export default function CarModel({
         if (driveDir.steering === 'left') steeringInput = 1
         else if (driveDir.steering === 'right') steeringInput = -1
 
+        // Burnout detection: W + S pressed simultaneously
+        const isBurnout = wPressed.current && sPressed.current
+        if (isBurnout) {
+          throttleInput = 0 // Cancel forward/backward movement
+        }
+
         // --- Steering (smooth interpolation with speed-dependent limit) ---
         // At low speeds: full steering angle for tight turns
         // At high speeds: reduced angle for stability (like real power steering)
-        const globalMaxSpeed = DRIVE_MODES['race']?.maxSpeed || 55;
-        const speedRatio = THREE.MathUtils.clamp(Math.abs(physics.speed) / globalMaxSpeed, 0, 1)
-        const currentMaxSteer = THREE.MathUtils.lerp(config.maxSteeringAngle, config.minSteeringAngle, speedRatio)
+        const globalMaxSpeed = DRIVE_MODES['race']?.maxSpeed || 55
+        const speedRatio = THREE.MathUtils.clamp(
+          Math.abs(physics.speed) / globalMaxSpeed,
+          0,
+          1
+        )
+        const currentMaxSteer = THREE.MathUtils.lerp(
+          config.maxSteeringAngle,
+          config.minSteeringAngle,
+          speedRatio
+        )
         const targetSteering = steeringInput * currentMaxSteer
 
         if (Math.abs(steeringInput) > 0.01) {
           // Player is actively steering - interpolate towards target
-          damp(physics, 'steeringAngle', targetSteering, 0.25, delta);
+          damp(physics, 'steeringAngle', targetSteering, 0.25, delta)
         } else {
           // Auto-center wheels when no steering input
-          damp(physics, 'steeringAngle', 0, 0.35, delta);
+          damp(physics, 'steeringAngle', 0, 0.35, delta)
         }
 
         // Clamp steering angle to speed-dependent limit
@@ -547,72 +749,421 @@ export default function CarModel({
           config.maxSpeed
         )
 
-        // --- Bicycle Model Movement (arc, not tank turn) ---
-        if (Math.abs(physics.speed) > 0.001) {
-          if (Math.abs(physics.steeringAngle) > 0.001) {
-            // Calculate turn radius from rear axle
-            const turnRadius = config.wheelbase / Math.tan(physics.steeringAngle)
+        // --- Vector-Based Drift Physics ---
+        // Decouple velocity from heading. This allows the car to point one way while sliding another.
+        physics.velX = physics.velX || 0
+        physics.velZ = physics.velZ || 0
 
-            // Angular velocity = speed / turnRadius
-            let angularVelocity = physics.speed / turnRadius
+        const bodyX = Math.sin(group.rotation.y)
+        const bodyZ = Math.cos(group.rotation.y)
 
-            // Understeer at high speed: grip drops off, making car harder to turn
-            // At 0 speed: full grip (1.0), at max speed: 40% grip
-            const gripFactor = THREE.MathUtils.lerp(1.0, 0.4, speedRatio)
-            angularVelocity *= gripFactor
+        // Apply throttle / brake along the car's heading
+        if (throttleInput > 0) {
+          physics.velX +=
+            bodyX * config.acceleration * throttleInput * delta
+          physics.velZ +=
+            bodyZ * config.acceleration * throttleInput * delta
+        } else if (throttleInput < 0) {
+          physics.velX += bodyX * config.braking * throttleInput * delta
+          physics.velZ += bodyZ * config.braking * throttleInput * delta
+        }
 
-            // Update car heading (rotation)
-            group.rotation.y += angularVelocity * delta
+        // Decompose global velocity into local axes relative to the car body
+        let forwardSpeed =
+          physics.velX * bodyX + physics.velZ * bodyZ
+        const rightX = Math.cos(group.rotation.y)
+        const rightZ = -Math.sin(group.rotation.y)
+        let lateralSpeed =
+          physics.velX * rightX + physics.velZ * rightZ
+
+        // Apply rolling friction
+        if (throttleInput === 0) {
+          const frictionDrop = config.friction * delta
+          if (Math.abs(forwardSpeed) < frictionDrop) {
+            forwardSpeed = 0
+          } else {
+            forwardSpeed -= Math.sign(forwardSpeed) * frictionDrop
           }
+        }
 
-          // Move car forward in the direction it's facing
-          const dx = Math.sin(group.rotation.y) * physics.speed * delta
-          const dz = Math.cos(group.rotation.y) * physics.speed * delta
+        // Clamp to max speed
+        forwardSpeed = THREE.MathUtils.clamp(
+          forwardSpeed,
+          -config.maxSpeed * 0.4,
+          config.maxSpeed
+        )
 
-          let collision = false;
+        // Track handbrake input to override natural traction
+        const handbrakeActive = spacePressed.current
+        const targetTraction = handbrakeActive ? 0.95 : 0.05
+
+        // Initialize if empty
+        physics.currentTraction = physics.currentTraction ?? 0.05
+
+        // Gradual return to grip when handbrake is released, but quick drop when handbrake is pressed
+        const tractionLerpSpeed = handbrakeActive ? 5.0 : 0.8
+        const tractionFactor =
+          1 - Math.exp(-tractionLerpSpeed * delta)
+        physics.currentTraction = THREE.MathUtils.lerp(
+          physics.currentTraction,
+          targetTraction,
+          tractionFactor
+        )
+
+        // Apply sideways friction (kills lateral momentum based on traction)
+        lateralSpeed *= Math.pow(
+          physics.currentTraction,
+          delta * 60
+        )
+
+        // Steering: Car turns based on forward rolling speed, not total sliding speed
+        if (
+          Math.abs(forwardSpeed) > 0.001 &&
+          Math.abs(physics.steeringAngle) > 0.001
+        ) {
+          const turnRadius =
+            config.wheelbase / Math.tan(physics.steeringAngle)
+          let angularVelocity = forwardSpeed / turnRadius
+
+          const speedRatio = THREE.MathUtils.clamp(
+            Math.abs(forwardSpeed) /
+            (DRIVE_MODES['race']?.maxSpeed || 55),
+            0,
+            1
+          )
+          let gripFactor = THREE.MathUtils.lerp(
+            1.0,
+            0.4,
+            speedRatio
+          )
+
+          physics.currentOversteer =
+            physics.currentOversteer ?? 1.0
+          const targetOversteer = handbrakeActive ? 1.5 : 1.0
+          physics.currentOversteer = THREE.MathUtils.lerp(
+            physics.currentOversteer,
+            targetOversteer,
+            tractionFactor
+          )
+
+          // Oversteer via handbrake kicks out the back end less aggressively than before
+          gripFactor *= physics.currentOversteer
+
+          angularVelocity *= gripFactor
+          group.rotation.y += angularVelocity * delta
+        }
+
+        // Reconstruct global velocity from local speeds so the camera and path logic receive the updated vector
+        physics.velX =
+          bodyX * forwardSpeed + rightX * lateralSpeed
+        physics.velZ =
+          bodyZ * forwardSpeed + rightZ * lateralSpeed
+        physics.speed = forwardSpeed
+        physics.sidewaysSpeed = lateralSpeed
+
+        // Ensure variables mapped correctly for collision / movement detection
+        if (
+          Math.abs(physics.velX) > 0.001 ||
+          Math.abs(physics.velZ) > 0.001
+        ) {
+          const dx = physics.velX * delta
+          const dz = physics.velZ * delta
+
+          let collision = false
 
           // Throttle raycasting to every 3rd frame to massively reduce GPU/CPU load
-          collisionFrameRef.current++;
-          if (trackColliders && trackColliders.length > 0 && Math.abs(physics.speed) > 0.05 && collisionFrameRef.current % 3 === 0) {
-            const isForward = physics.speed > 0;
-            // Reuse cached vectors instead of allocating new ones every frame
-            _forwardDir.current.set(Math.sin(group.rotation.y), 0, Math.cos(group.rotation.y)).normalize();
-            if (isForward) {
-              _rayDir.current.copy(_forwardDir.current);
-            } else {
-              _rayDir.current.copy(_forwardDir.current).negate();
-            }
+          collisionFrameRef.current++
+          if (
+            trackColliders &&
+            trackColliders.length > 0 &&
+            Math.abs(physics.speed) > 0.05 &&
+            collisionFrameRef.current % terrainConfig.collisionRaycastModulo === 0
+          ) {
+            // Raycast vector accounts for both forward and sliding sideways velocities
+            _forwardDir.current.set(dx, 0, dz).normalize()
+            _rayDir.current.copy(_forwardDir.current)
+            _rayOrigin.current.set(
+              group.position.x,
+              group.position.y + 0.5,
+              group.position.z
+            )
+            const rayFar = 2.9
 
-            _rayOrigin.current.set(group.position.x, -0.6, group.position.z);
-            const rayFar = 2.9;
+            raycasterRef.current.set(
+              _rayOrigin.current,
+              _rayDir.current
+            )
+            raycasterRef.current.far = rayFar
 
-            raycasterRef.current.set(_rayOrigin.current, _rayDir.current);
-            raycasterRef.current.far = rayFar;
-
-            const intersects = raycasterRef.current.intersectObjects(trackColliders, false);
+            const intersects =
+              raycasterRef.current.intersectObjects(trackColliders, false)
 
             if (intersects.length > 0) {
-              collision = true;
+              collision = true
             }
-
             if (collision) {
-              physics.speed = 0;
-              const repulse = isForward ? -0.15 : 0.15;
-              group.position.x += _forwardDir.current.x * repulse;
-              group.position.z += _forwardDir.current.z * repulse;
+              physics.velX = 0
+              physics.velZ = 0
+              physics.speed = 0
+              physics.sidewaysSpeed = 0
+              // Push back opposite to movement direction
+              const repulse = 0.2
+              group.position.x -= _forwardDir.current.x * repulse
+              group.position.z -= _forwardDir.current.z * repulse
             }
           }
 
           if (!collision) {
-            group.position.x += dx;
-            group.position.z += dz;
+            group.position.x += dx
+            group.position.z += dz
           }
         }
 
-        // Keep car on the floor
-        group.position.y = -0.8
+        // ─────────────────────────────────────────────────────────────────────
+        // TERRAIN FOLLOWING — cast a ray downward from above the car and snap
+        // the car's Y to the road surface.  Uses terrainMeshes (road/ground)
+        // when available, otherwise falls back to trackColliders, then to
+        // FALLBACK_Y on flat tracks with no geometry at all.
+        //
+        // MULTI-LEVEL TRACK LOGIC: The ray returns hits sorted nearest-first
+        // (= highest Y first, since the ray travels downward).  On a track with
+        // bridges / overpasses the very first hit is often the bridge surface
+        // sitting ABOVE the car, not the road beneath it.  We therefore filter
+        // hits to only accept surfaces that are at most MAX_STEP_UP units above
+        // the last known terrain Y, which prevents bridge-snap jumps while still
+        // allowing the car to climb ramps smoothly.
+        // ─────────────────────────────────────────────────────────────────────
+        const terrainTargets =
+          terrainMeshes && terrainMeshes.length > 0
+            ? terrainMeshes
+            : trackColliders && trackColliders.length > 0
+              ? trackColliders
+              : null
 
-        // Export car position for camera follow
+        const hasFixedRideY = Number.isFinite(terrainConfig.fixedRideY)
+        const fixedRideY = hasFixedRideY
+          ? terrainConfig.fixedRideY
+          : carPosition?.[1] ?? FALLBACK_Y
+
+        if (terrainConfig.disableTerrainFollow) {
+          group.position.y = fixedRideY
+          _smoothedTerrainY.current = fixedRideY - CAR_RIDE_HEIGHT
+        } else
+
+        if (terrainTargets) {
+          terrainFrameRef.current++
+          const shouldSampleTerrain =
+            _smoothedTerrainY.current === null ||
+            terrainFrameRef.current % terrainConfig.terrainRaycastModulo === 0
+
+          if (!shouldSampleTerrain) {
+            group.position.y = _smoothedTerrainY.current + CAR_RIDE_HEIGHT
+          } else {
+          // Only start the ray slightly above the car to prevent hitting bridges/overhead stuff
+          const RAY_ABOVE = 5
+          _terrainRayOrigin.current.set(
+            group.position.x,
+            group.position.y + RAY_ABOVE,
+            group.position.z
+          )
+          terrainRaycasterRef.current.set(
+            _terrainRayOrigin.current,
+            _terrainRayDown.current
+          )
+          terrainRaycasterRef.current.far = RAY_ABOVE + 10
+
+          const terrainHits =
+            terrainRaycasterRef.current.intersectObjects(
+              terrainTargets,
+              false
+            )
+
+          if (terrainHits.length > 0) {
+            // ── Proximity-based hit selection ───────────────────────────────────
+            // terrainHits is sorted nearest-first from the ray origin (= highest
+            // Y first, since the ray travels downward).
+            //
+            // PROBLEM with simple find(): a bridge that is 1.5 m above the road
+            // passes both MAX_STEP_UP=2 AND comes first in the sorted list, so
+            // it gets selected instead of the road → car is launched upward.
+            //
+            // FIX: among all hits below (expectedY + MAX_STEP_UP), pick the one
+            // whose Y is CLOSEST to expectedY.  This keeps the car on whatever
+            // surface it is currently riding even when a low bridge is nearby.
+            // MAX_STEP_UP is now loose (4 m) — the proximity sort does the real
+            // discrimination between bridge (far from expected) vs road (close).
+            // ───────────────────────────────────────────────────────────────────
+            const MAX_STEP_UP = terrainConfig.maxStepUp
+            const expectedY =
+              _smoothedTerrainY.current ?? (group.position.y - CAR_RIDE_HEIGHT)
+
+            // Step 1: discard anything impossibly high above (very tall bridges)
+            let bestHit = null
+            let bestDist = Infinity
+            for (let i = 0; i < terrainHits.length; i++) {
+              const hit = terrainHits[i]
+              if (hit.face) {
+                _terrainNormal.current
+                  .copy(hit.face.normal)
+                  .transformDirection(hit.object.matrixWorld)
+                // Weaken the normal check significantly so we don't reject slopes
+                if (_terrainNormal.current.y < 0.2) continue
+              }
+
+              const hy = hit.point.y
+              if (hy > expectedY + MAX_STEP_UP) continue // skip very-high overhead
+              const d = Math.abs(hy - expectedY)
+              if (d > terrainConfig.maxSurfaceDeltaFromExpected) continue
+              if (d < bestDist) {
+                bestDist = d
+                bestHit = hit
+              }
+            }
+
+            if (bestHit) {
+              const surfaceY = bestHit.point.y
+
+              if (_smoothedTerrainY.current === null) {
+                _smoothedTerrainY.current = surfaceY
+              }
+
+              // Adaptive lerp speed:
+              //   • Terrain rises   (ramp up)   → speed 10, smooth climb
+              //   • Terrain drops   (ramp down)  → speed 20, snappy / planted feel
+              // This makes the car feel heavy and glued to the road going
+              // downhill while still smoothly following ramp‐ups.
+              const goingDown = surfaceY < _smoothedTerrainY.current
+              const terrainLerpSpeed = goingDown ? 20 : 10
+              const terrainLerpFactor =
+                1 - Math.exp(-terrainLerpSpeed * delta)
+              let nextTerrainY = THREE.MathUtils.lerp(
+                _smoothedTerrainY.current,
+                surfaceY,
+                terrainLerpFactor
+              )
+
+              const maxRise = terrainConfig.maxRisePerSecond * delta
+              const maxFall = terrainConfig.maxFallPerSecond * delta
+              const deltaY = nextTerrainY - _smoothedTerrainY.current
+              if (deltaY > maxRise) {
+                nextTerrainY = _smoothedTerrainY.current + maxRise
+              } else if (deltaY < -maxFall) {
+                nextTerrainY = _smoothedTerrainY.current - maxFall
+              }
+
+              _smoothedTerrainY.current = nextTerrainY
+
+              group.position.y =
+                _smoothedTerrainY.current + CAR_RIDE_HEIGHT
+            }
+            // bestHit === null: all hits were extreme overhead geometry —
+            // keep current Y for this frame (briefly airborne / ramp exit).
+          } else {
+            // Absolutely no geometry below at all — flat fallback track
+            _smoothedTerrainY.current = null
+            group.position.y = FALLBACK_Y
+          }
+          }
+        } else {
+          // No terrain meshes or colliders at all — flat track fallback
+          _smoothedTerrainY.current = null
+          group.position.y = FALLBACK_Y
+        }
+        // ─────────────────────────────────────────────────────────────────────
+
+        // ── TERRAIN SLOPE PITCH ───────────────────────────────────────────────
+        // Sample terrain height at the front and rear axles to derive pitch.
+        // Throttled to every 2nd frame; pitch is smoothed so gaps are invisible.
+        // ─────────────────────────────────────────────────────────────────────
+        _slopeFrame.current++
+        if (terrainConfig.disableTerrainFollow || !terrainConfig.enableSlopePitch) {
+          _smoothedPitch.current = 0
+        }
+        if (
+          !terrainConfig.disableTerrainFollow &&
+          terrainConfig.enableSlopePitch &&
+          terrainTargets &&
+          _smoothedTerrainY.current !== null &&
+          _slopeFrame.current % terrainConfig.slopeRaycastModulo === 0
+        ) {
+          const AXLE_DIST = 2.2 // ~half car length in world units
+          const sinY = Math.sin(group.rotation.y)
+          const cosY = Math.cos(group.rotation.y)
+          const slopeFar = 16
+
+          // Front axle
+          _terrainRayOrigin.current.set(
+            group.position.x + sinY * AXLE_DIST,
+            group.position.y + 8,
+            group.position.z + cosY * AXLE_DIST
+          )
+          terrainRaycasterRef.current.set(_terrainRayOrigin.current, _terrainRayDown.current)
+          terrainRaycasterRef.current.far = slopeFar
+          const fHits = terrainRaycasterRef.current.intersectObjects(terrainTargets, false)
+
+          // Rear axle
+          _terrainRayOrigin.current.set(
+            group.position.x - sinY * AXLE_DIST,
+            group.position.y + 8,
+            group.position.z - cosY * AXLE_DIST
+          )
+          terrainRaycasterRef.current.set(_terrainRayOrigin.current, _terrainRayDown.current)
+          terrainRaycasterRef.current.far = slopeFar
+          const rHits = terrainRaycasterRef.current.intersectObjects(terrainTargets, false)
+
+          const cY = _smoothedTerrainY.current
+          const pickSlopeHitY = (hits) => {
+            for (let i = 0; i < hits.length; i++) {
+              const hit = hits[i]
+              if (!hit.face) return hit.point.y
+              _terrainNormal.current
+                .copy(hit.face.normal)
+                .transformDirection(hit.object.matrixWorld)
+              if (_terrainNormal.current.y >= terrainConfig.minTerrainNormalY) {
+                return hit.point.y
+              }
+            }
+            return cY
+          }
+
+          const fY = pickSlopeHitY(fHits)
+          const rY = pickSlopeHitY(rHits)
+
+          // pitch > 0 means front is higher → car nose should tilt up
+          // In Three.js with YXZ order, negative X rotation tilts nose up
+          const targetPitch = Math.atan2(fY - rY, AXLE_DIST * 2)
+          const pitchLerp = 1 - Math.exp(-10 * delta)
+          _smoothedPitch.current = THREE.MathUtils.lerp(_smoothedPitch.current, targetPitch, pitchLerp)
+        }
+
+        // Apply clamped pitch every frame (decays to 0 on flat terrain naturally)
+        const MAX_PITCH = THREE.MathUtils.degToRad(terrainConfig.maxPitchDeg)
+        group.rotation.x = THREE.MathUtils.clamp(-_smoothedPitch.current, -MAX_PITCH, MAX_PITCH)
+
+        // Hard safety net against bad terrain hits causing launch/fall-through.
+        // Also clamp velocity to prevent NaN explosion crashes (spontaneous reloads)
+        if (
+          !Number.isFinite(group.position.x) ||
+          !Number.isFinite(group.position.y) ||
+          !Number.isFinite(group.position.z) ||
+          !Number.isFinite(physics.velX) ||
+          !Number.isFinite(physics.velZ) ||
+          group.position.y < terrainConfig.minYClamp ||
+          group.position.y > terrainConfig.maxYClamp
+        ) {
+          group.position.x = carPosition?.[0] ?? 0
+          group.position.y = carPosition?.[1] ?? FALLBACK_Y
+          group.position.z = carPosition?.[2] ?? 0
+          _smoothedTerrainY.current = group.position.y
+          physics.velX = 0
+          physics.velZ = 0
+          physics.speed = 0
+          _smoothedPitch.current = 0
+          group.rotation.x = 0
+        }
+        // ─────────────────────────────────────────────────────────────────────
+
+        // Export car position for camera follow and physics hooks
         if (carPositionRef) {
           carPositionRef.current = {
             x: group.position.x,
@@ -620,12 +1171,17 @@ export default function CarModel({
             z: group.position.z,
             rotation: group.rotation.y,
             speed: physics.speed,
+            sidewaysSpeed: physics.sidewaysSpeed || 0,
+            isDrifting:
+              handbrakeActive &&
+              Math.abs(physics.sidewaysSpeed || 0) > 1.5,
+            isBurnout: isBurnout,
           }
         }
 
-        // ═══════════════════════════════════════════════════════════════════════════
+        // ═══════════════════════════════════════════════════════════════════════
         // WHEEL VISUALS - Ackermann-like steering geometry
-        // ═══════════════════════════════════════════════════════════════════════════
+        // ═══════════════════════════════════════════════════════════════════════
         // The wheel meshes in the 3D model have their own local coordinate system.
         // Typically:
         // - Rolling (forward motion) = rotation around the wheel's axle
@@ -633,10 +1189,13 @@ export default function CarModel({
         //
         // We need to apply rotations in the correct order and on correct axes.
         // The initial rotation of the wheel mesh is stored and we add to it.
-        // ═══════════════════════════════════════════════════════════════════════════
+        // ═══════════════════════════════════════════════════════════════════════
 
         const wheelRadius = 0.34 // ~0.34m for Giulia wheels
-        const spinDelta = (physics.speed * delta) / wheelRadius
+        // During burnout, rear wheels spin fast even though car is stationary
+        const spinDelta = isBurnout
+          ? delta * 80
+          : (physics.speed * delta) / wheelRadius
         wheelRotationRef.current += spinDelta
 
         // Ackermann steering: inner wheel turns more than outer wheel
@@ -649,11 +1208,17 @@ export default function CarModel({
 
         if (Math.abs(physics.steeringAngle) > 0.01) {
           // Calculate turn radius from steering angle
-          const turnRadius = wheelBase / Math.tan(Math.abs(physics.steeringAngle))
+          const turnRadius =
+            wheelBase /
+            Math.tan(Math.abs(physics.steeringAngle))
 
           // Inner wheel turns more, outer wheel turns less
-          innerAngle = Math.atan(wheelBase / (turnRadius - trackWidth / 2))
-          outerAngle = Math.atan(wheelBase / (turnRadius + trackWidth / 2))
+          innerAngle = Math.atan(
+            wheelBase / (turnRadius - trackWidth / 2)
+          )
+          outerAngle = Math.atan(
+            wheelBase / (turnRadius + trackWidth / 2)
+          )
 
           // Apply sign based on steering direction
           if (physics.steeringAngle < 0) {
@@ -676,18 +1241,36 @@ export default function CarModel({
           if (isFrontWheel) {
             // Determine if this wheel is inner or outer based on turn direction
             const turningLeft = physics.steeringAngle > 0
-            const isInnerWheel = (turningLeft && isLeftWheel) || (!turningLeft && !isLeftWheel)
+            const isInnerWheel =
+              (turningLeft && isLeftWheel) ||
+              (!turningLeft && !isLeftWheel)
 
-            const steerAngle = isInnerWheel ? innerAngle : outerAngle
+            const steerAngle = isInnerWheel
+              ? innerAngle
+              : outerAngle
 
             // Steer by rotating around Y axis (in parent space)
-            const steerQuat = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), steerAngle)
+            const steerQuat = new THREE.Quaternion().setFromAxisAngle(
+              new THREE.Vector3(0, 1, 0),
+              steerAngle
+            )
             q.premultiply(steerQuat)
           }
 
           // Apply rolling rotation (around the wheel's local axle - typically X in model space)
-          const spinRotation = isLeftWheel ? -wheelRotationRef.current : wheelRotationRef.current
-          const rollQuat = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), spinRotation)
+          // During burnout, only rear wheels spin
+          let spinRotation
+          if (isBurnout && isFrontWheel) {
+            spinRotation = 0 // Front wheels stay still during burnout
+          } else {
+            spinRotation = isLeftWheel
+              ? -wheelRotationRef.current
+              : wheelRotationRef.current
+          }
+          const rollQuat = new THREE.Quaternion().setFromAxisAngle(
+            new THREE.Vector3(1, 0, 0),
+            spinRotation
+          )
           q.multiply(rollQuat)
 
           wheel.quaternion.copy(q)
@@ -702,8 +1285,13 @@ export default function CarModel({
         if (!initialQuat) return
 
         const q = initialQuat.clone()
-        const spinRotation = isLeftWheel ? -wheelRotationRef.current : wheelRotationRef.current
-        const rollQuat = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), spinRotation)
+        const spinRotation = isLeftWheel
+          ? -wheelRotationRef.current
+          : wheelRotationRef.current
+        const rollQuat = new THREE.Quaternion().setFromAxisAngle(
+          new THREE.Vector3(1, 0, 0),
+          spinRotation
+        )
         q.multiply(rollQuat)
 
         wheel.quaternion.copy(q)
@@ -719,46 +1307,75 @@ export default function CarModel({
     }
 
     // Ensure car stays on floor in free roam mode
-    if (freeRoamActive && groupRef.current) {
-      groupRef.current.position.y = -0.8
+    // (terrain following above handles Y when terrainTargets exist;
+    //  this is the fallback for when there are no colliders or terrain meshes)
+    if (
+      freeRoamActive &&
+      groupRef.current &&
+      (!trackColliders || trackColliders.length === 0) &&
+      (!terrainMeshes || terrainMeshes.length === 0)
+    ) {
+      groupRef.current.position.y = FALLBACK_Y
     }
 
     if (leftHeadlightRef.current) {
-      leftHeadlightRef.current.intensity = 22 * headlightLevelRef.current
+      leftHeadlightRef.current.intensity =
+        22 * headlightLevelRef.current
     }
     if (rightHeadlightRef.current) {
-      rightHeadlightRef.current.intensity = 22 * headlightLevelRef.current
+      rightHeadlightRef.current.intensity =
+        22 * headlightLevelRef.current
     }
     // --- REAR LIGHT TUNING (INTENSITY LAYER) ---
     // These two point lights are the compact "lamp core" glow right at the taillamp housing.
     // Increase for stronger local red punch; keep low to avoid tiny vertical floor dots.
     if (leftTaillightRef.current) {
-      leftTaillightRef.current.intensity = Math.max(0.4 * headlightLevelRef.current, 2.0 * brakeLightLevelRef.current)
+      leftTaillightRef.current.intensity = Math.max(
+        0.4 * headlightLevelRef.current,
+        2.0 * brakeLightLevelRef.current
+      )
     }
     if (rightTaillightRef.current) {
-      rightTaillightRef.current.intensity = Math.max(0.4 * headlightLevelRef.current, 2.0 * brakeLightLevelRef.current)
+      rightTaillightRef.current.intensity = Math.max(
+        0.4 * headlightLevelRef.current,
+        2.0 * brakeLightLevelRef.current
+      )
     }
 
     if (leftFrontSpillRef.current) {
-      leftFrontSpillRef.current.intensity = 15 * headlightLevelRef.current
+      leftFrontSpillRef.current.intensity =
+        15 * headlightLevelRef.current
     }
     if (rightFrontSpillRef.current) {
-      rightFrontSpillRef.current.intensity = 15 * headlightLevelRef.current
+      rightFrontSpillRef.current.intensity =
+        15 * headlightLevelRef.current
     }
     // These two spot lights are the rear floor spill (the long red projection behind the car).
     // Raise value for brighter rear projection footprint on floor.
     if (leftRearSpillRef.current) {
-      leftRearSpillRef.current.intensity = Math.max(9.8 * headlightLevelRef.current, 20.0 * brakeLightLevelRef.current)
+      leftRearSpillRef.current.intensity = Math.max(
+        9.8 * headlightLevelRef.current,
+        20.0 * brakeLightLevelRef.current
+      )
     }
     if (rightRearSpillRef.current) {
-      rightRearSpillRef.current.intensity = Math.max(9.8 * headlightLevelRef.current, 20.0 * brakeLightLevelRef.current)
+      rightRearSpillRef.current.intensity = Math.max(
+        9.8 * headlightLevelRef.current,
+        20.0 * brakeLightLevelRef.current
+      )
     }
 
-    if (leftFrontSpillTargetRef.current && rightFrontSpillTargetRef.current) {
+    if (
+      leftFrontSpillTargetRef.current &&
+      rightFrontSpillTargetRef.current
+    ) {
       leftFrontSpillTargetRef.current.updateMatrixWorld()
       rightFrontSpillTargetRef.current.updateMatrixWorld()
     }
-    if (leftRearSpillTargetRef.current && rightRearSpillTargetRef.current) {
+    if (
+      leftRearSpillTargetRef.current &&
+      rightRearSpillTargetRef.current
+    ) {
       leftRearSpillTargetRef.current.updateMatrixWorld()
       rightRearSpillTargetRef.current.updateMatrixWorld()
     }
@@ -768,36 +1385,54 @@ export default function CarModel({
     // In normal mode, car stays at fixed position
     if (!freeRoamActive) {
       groupRef.current.rotation.y = current.rotationY
-      groupRef.current.position.set(current.positionX, current.positionY, current.positionZ)
+      groupRef.current.position.set(
+        current.positionX,
+        current.positionY,
+        current.positionZ
+      )
     }
   })
 
   const handleMeshClick = (e) => {
     e.stopPropagation()
-    const meshName = e.object.name
-    const matName = e.object.material?.name || 'No Material'
-
   }
 
   return (
     <group ref={groupRef}>
-      {/* Only render baked ContactShadows when NOT free roaming — eliminates trailing shadow lines */}
-      {!freeRoamActive && (
-        <ContactShadows frames={1} position={[0, -0.02, 0]} opacity={0.65} scale={18} blur={2.0} far={4} resolution={1024} color="#000000" />
-      )}
+      {/* ContactShadows removed — uses MultiplyBlending without premultipliedAlpha
+          which spams the console with three.js errors on every frame.
+          Real shadow maps (castShadow / receiveShadow) are used instead. */}
       <group ref={vehicleLightsRef}>
-        <object3D ref={leftHeadlightTargetRef} position={[-1.18, -1.05, 14]} />
-        <object3D ref={rightHeadlightTargetRef} position={[1.18, -1.05, 14]} />
-        <object3D ref={leftFrontSpillTargetRef} position={[-0.9, FLOOR_Y, 6.2]} />
-        <object3D ref={rightFrontSpillTargetRef} position={[0.9, FLOOR_Y, 6.2]} />
+        <object3D
+          ref={leftHeadlightTargetRef}
+          position={[-1.18, -1.05, 14]}
+        />
+        <object3D
+          ref={rightHeadlightTargetRef}
+          position={[1.18, -1.05, 14]}
+        />
+        <object3D
+          ref={leftFrontSpillTargetRef}
+          position={[-0.9, FLOOR_Y, 6.2]}
+        />
+        <object3D
+          ref={rightFrontSpillTargetRef}
+          position={[0.9, FLOOR_Y, 6.2]}
+        />
         {/*
           REAR TARGETS = where rear spotlights hit the floor.
           x: wider +/- => wider left/right spread on floor.
           z: more negative => farther throw behind the car.
           y should stay close to FLOOR_Y for stable floor interception.
         */}
-        <object3D ref={leftRearSpillTargetRef} position={[-1.9, FLOOR_Y, -4.6]} />
-        <object3D ref={rightRearSpillTargetRef} position={[1.9, FLOOR_Y, -4.6]} />
+        <object3D
+          ref={leftRearSpillTargetRef}
+          position={[-1.9, FLOOR_Y, -4.6]}
+        />
+        <object3D
+          ref={rightRearSpillTargetRef}
+          position={[1.9, FLOOR_Y, -4.6]}
+        />
 
         <spotLight
           ref={leftHeadlightRef}
@@ -807,7 +1442,7 @@ export default function CarModel({
           distance={34}
           decay={1}
           color="#e7edf8"
-          castShadow
+          castShadow={terrainConfig.enableHeadlightShadows}
           shadow-mapSize-width={1024}
           shadow-mapSize-height={1024}
           shadow-bias={-0.00012}
@@ -839,7 +1474,7 @@ export default function CarModel({
           distance={34}
           decay={0.5}
           color="#f3f0e6"
-          castShadow
+          castShadow={terrainConfig.enableHeadlightShadows}
           shadow-mapSize-width={1024}
           shadow-mapSize-height={1024}
           shadow-bias={-0.00012}
@@ -904,7 +1539,10 @@ export default function CarModel({
         </mesh>
 
         {/* Front Right Headlight */}
-        <mesh ref={rightLensFlareRef} position={[0.78, 0.72, 2.28]}>
+        <mesh
+          ref={rightLensFlareRef}
+          position={[0.78, 0.72, 2.28]}
+        >
           <sphereGeometry args={[0.03, 8, 8]} />
           <meshStandardMaterial
             color="#000000"
@@ -918,8 +1556,12 @@ export default function CarModel({
 
         {/* Rear Left Taillight - LED strip shape (wider, flatter) */}
         {/* rotation: [x-tilt, y-rotation, z-roll] in radians */}
-        <mesh ref={leftRearFlareRef} position={[-0.54, 1, -2.45]} rotation={[0, 0.39, -0.02]}>
-          <boxGeometry args={[0.30, 0.01, 0.02]} />
+        <mesh
+          ref={leftRearFlareRef}
+          position={[-0.54, 1, -2.45]}
+          rotation={[0, 0.39, -0.02]}
+        >
+          <boxGeometry args={[0.3, 0.01, 0.02]} />
           <meshStandardMaterial
             color="#000000"
             emissive="#ff2010"
@@ -931,8 +1573,12 @@ export default function CarModel({
         </mesh>
 
         {/* Rear Right Taillight - LED strip shape (wider, flatter) */}
-        <mesh ref={rightRearFlareRef} position={[0.54, 1, -2.45]} rotation={[0, -0.39, 0.02]}>
-          <boxGeometry args={[0.30, 0.01, 0.02]} />
+        <mesh
+          ref={rightRearFlareRef}
+          position={[0.54, 1, -2.45]}
+          rotation={[0, -0.39, 0.02]}
+        >
+          <boxGeometry args={[0.3, 0.01, 0.02]} />
           <meshStandardMaterial
             color="#000000"
             emissive="#ff2010"
@@ -944,7 +1590,11 @@ export default function CarModel({
         </mesh>
 
         {/* Rear Left Taillight - Curved side strip */}
-        <mesh ref={leftRearFlare2Ref} position={[-0.80, 1, -2.278]} rotation={[0, 0.72, 0]}>
+        <mesh
+          ref={leftRearFlare2Ref}
+          position={[-0.8, 1, -2.278]}
+          rotation={[0, 0.72, 0]}
+        >
           <boxGeometry args={[0.27, 0.01, 0.02]} />
           <meshStandardMaterial
             color="#000000"
@@ -957,7 +1607,11 @@ export default function CarModel({
         </mesh>
 
         {/* Rear Right Taillight - Curved side strip */}
-        <mesh ref={rightRearFlare2Ref} position={[0.80, 1, -2.278]} rotation={[0, -0.72, 0]}>
+        <mesh
+          ref={rightRearFlare2Ref}
+          position={[0.8, 1, -2.278]}
+          rotation={[0, -0.72, 0]}
+        >
           <boxGeometry args={[0.27, 0.01, 0.02]} />
           <meshStandardMaterial
             color="#000000"

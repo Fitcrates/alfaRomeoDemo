@@ -12,17 +12,71 @@ import { damp3 } from "maath/easing";
 import CarModel from "./CarModel";
 import Lighting from "./Lighting";
 
-function TrackModel({ onCollidersLoaded }) {
-  const { scene } = useGLTF("/models/drift_race_track_free.glb");
+// Track configurations
+const TRACK_CONFIGS = {
+  drift: {
+    model: '/models/drift_race_track_free.glb',
+    position: [0, -0.85, 0],
+    scale: 0.7,
+    spawnPosition: [20, -0.8, 16],
+    spawnRotation: Math.PI * 0.5,
+  },
+  karting: {
+    model: '/models/karting_club_lider__karting_race_track_early.glb',
+    position: [24, -0.1, -12],
+    scale: 2.5,
+    spawnPosition: [24, -0.1, -12],
+    spawnRotation: 0,
+  },
+};
+
+const TRACK_TUNING = {
+  drift: {
+    terrainRaycastModulo: 3,
+    collisionRaycastModulo: 3,
+    slopeRaycastModulo: 99,
+    maxStepUp: 4.0,
+    maxPitchDeg: 0,
+    minTerrainNormalY: 0.2,
+    enableSlopePitch: false,
+    maxSurfaceDeltaFromExpected: 4.0,
+    maxRisePerSecond: 10.0,
+    maxFallPerSecond: 15.0,
+    minYClamp: -100,
+    maxYClamp: 100,
+    disableTerrainFollow: false,
+  },
+  karting: {
+    terrainRaycastModulo: 2,
+    collisionRaycastModulo: 6,
+    slopeRaycastModulo: 99,
+    maxStepUp: 4.0,
+    maxPitchDeg: 0,
+    minTerrainNormalY: 0.2,
+    enableSlopePitch: false,
+    maxSurfaceDeltaFromExpected: 4.0,
+    maxRisePerSecond: 15.0,
+    maxFallPerSecond: 20.0,
+    minYClamp: -100,
+    maxYClamp: 100,
+    disableTerrainFollow: false,
+    enableHeadlightShadows: false,
+  },
+};
+
+function TrackModel({ onCollidersLoaded, onTerrainLoaded, trackId = 'drift' }) {
+  const config = TRACK_CONFIGS[trackId] || TRACK_CONFIGS.drift;
+  const isKarting = trackId === 'karting';
+  const { scene } = useGLTF(config.model);
   const groupRef = useRef();
 
   useEffect(() => {
     if (scene && groupRef.current) {
       const colliders = [];
-      // CRITICAL: Update world matrix AFTER the group transform is applied
-      // The group has position=[0,-0.85,0] scale=0.7, so all child matrices
-      // must incorporate that transform for raycasting to align correctly
+      const terrainMeshes = [];
+
       groupRef.current.updateMatrixWorld(true);
+
       scene.traverse((child) => {
         if (child.isMesh) {
           child.receiveShadow = true;
@@ -30,47 +84,66 @@ function TrackModel({ onCollidersLoaded }) {
           const mat = child.material;
           const name = (child.name || mat?.name || "").toLowerCase();
 
+          let isCollider = false;
+
+          if (
+            name.includes("wall") ||
+            name.includes("fence") ||
+            name.includes("barrier") ||
+            name.includes("tire") ||
+            name.includes("curb") ||
+            name.includes("guard") ||
+            name.includes("cube") ||
+            name.includes("cylinder")
+          ) {
+            isCollider = true;
+          }
+
           if (mat) {
-            const isRoad = name.includes("ground") ||
+            const isRoad =
+              name.includes("ground") ||
               name.includes("asphalt") ||
               name.includes("road") ||
               name.includes("floor") ||
               name.includes("plane") ||
               name.includes("track");
 
-            if (isRoad) {
-              child.castShadow = false; // Fix: Ground planes shouldn't cast shadows onto themselves! (no drag lines)
-              mat.roughness = Math.min(mat.roughness ?? 1, 0.15);
-              mat.metalness = Math.max(mat.metalness ?? 0, 0.1);
-              mat.envMapIntensity = 1.8;
-              mat.needsUpdate = true;
-            } else {
-              child.castShadow = true; // Fix: Only obstacles should cast shadows
-              mat.envMapIntensity = Math.max(
-                mat.envMapIntensity ?? 1,
-                1.2,
-              );
+            if (isRoad && !isCollider) {
+              child.castShadow = false;
+              // Remove icy reflection, make it look like dry asphalt
+              mat.roughness = Math.max(mat.roughness ?? 0.8, 0.8);
+              mat.metalness = Math.min(mat.metalness ?? 0.1, 0.1);
+              mat.envMapIntensity = 1.0;
               mat.needsUpdate = true;
 
-              // Only push obstacles with noticeable vertical height using pure geometry bounds
+              terrainMeshes.push(child);
+            } else {
+              child.castShadow = !isKarting;
+              mat.envMapIntensity = Math.max(mat.envMapIntensity ?? 1, 1.2);
+              mat.needsUpdate = true;
+
               child.geometry.computeBoundingBox();
-              const worldBox = new THREE.Box3().copy(child.geometry.boundingBox).applyMatrix4(child.matrixWorld);
+              const worldBox = new THREE.Box3()
+                .copy(child.geometry.boundingBox)
+                .applyMatrix4(child.matrixWorld);
               const height = worldBox.max.y - worldBox.min.y;
-              if (height > 0.25) {
-                child.geometry.computeBoundingSphere(); // Precompute to stop 1st frame stutter
-                colliders.push(child); // Push genuine collidable mesh!
+              if (height > 0.25 || isCollider) {
+                child.geometry.computeBoundingSphere();
+                colliders.push(child);
               }
             }
           }
         }
       });
-      console.log('[TrackModel] Colliders found:', colliders.length);
+
+      console.log(`[TrackModel:${trackId}] Colliders:`, colliders.length, '| Terrain meshes:', terrainMeshes.length);
       if (onCollidersLoaded) onCollidersLoaded(colliders);
+      if (onTerrainLoaded) onTerrainLoaded(terrainMeshes);
     }
-  }, [scene, onCollidersLoaded]);
+  }, [scene, onCollidersLoaded, onTerrainLoaded, trackId]);
 
   return (
-    <group ref={groupRef} position={[0, -0.85, 0]} scale={0.7}>
+    <group ref={groupRef} position={config.position} scale={config.scale}>
       <primitive object={scene} />
     </group>
   );
@@ -82,10 +155,10 @@ function RacetrackCamera({ carPositionRef, driveDirectionRef }) {
   const smoothedPosition = useRef(new THREE.Vector3());
   const smoothedTarget = useRef(new THREE.Vector3());
   const wasDrivingRef = useRef(false);
-  // Pre-allocate reusable vectors to eliminate GC jitter
   const _targetCamPos = useRef(new THREE.Vector3());
   const _targetLookAt = useRef(new THREE.Vector3());
   const _targetCenter = useRef(new THREE.Vector3());
+  const trackingDir = useRef(new THREE.Vector2(0, 1));
 
   useEffect(() => {
     if (carPositionRef?.current) {
@@ -101,10 +174,7 @@ function RacetrackCamera({ carPositionRef, driveDirectionRef }) {
     if (!carPositionRef?.current) return;
 
     const car = carPositionRef.current;
-    const dir = driveDirectionRef?.current || {
-      throttle: null,
-      steering: null,
-    };
+    const dir = driveDirectionRef?.current || { throttle: null, steering: null };
     const hasInput = dir.throttle || dir.steering;
     const carSpeed = Math.abs(car.speed || 0);
 
@@ -123,35 +193,50 @@ function RacetrackCamera({ carPositionRef, driveDirectionRef }) {
       const speedRatio = THREE.MathUtils.clamp(carSpeed / 15, 0, 1);
       const baseLerpSpeed = 2.5;
       const fastLerpSpeed = 8.0;
-      const lerpSpeed = THREE.MathUtils.lerp(
-        baseLerpSpeed,
-        fastLerpSpeed,
-        speedRatio,
-      );
-      // Ensure delta spikes do not cause snap effect rubberbanding
+      const lerpSpeed = THREE.MathUtils.lerp(baseLerpSpeed, fastLerpSpeed, speedRatio);
       const safeDelta = Math.min(delta, 0.05);
       const lerpFactor = 1 - Math.exp(-lerpSpeed * safeDelta);
 
-      const behindX =
-        car.x - Math.sin(car.rotation) * followDistance;
-      const behindZ =
-        car.z - Math.cos(car.rotation) * followDistance;
+      const speed = car.speed || 0;
+      const sidewaysSpeed = car.sidewaysSpeed || 0;
+      let targetDx = Math.sin(car.rotation);
+      let targetDz = Math.cos(car.rotation);
+
+      if (speed > 1 || Math.abs(sidewaysSpeed) > 1) {
+        targetDx = Math.sin(car.rotation) * speed + Math.cos(car.rotation) * sidewaysSpeed;
+        targetDz = Math.cos(car.rotation) * speed - Math.sin(car.rotation) * sidewaysSpeed;
+        const len = Math.sqrt(targetDx * targetDx + targetDz * targetDz);
+        if (len > 0) {
+          targetDx /= len;
+          targetDz /= len;
+        }
+      } else if (speed < -0.1) {
+        targetDx = Math.sin(car.rotation);
+        targetDz = Math.cos(car.rotation);
+      }
+
+      const driftSmoothLerp = car.isDrifting
+        ? 1 - Math.exp(-3.0 * safeDelta)
+        : 1 - Math.exp(-8.0 * safeDelta);
+      trackingDir.current.x = THREE.MathUtils.lerp(trackingDir.current.x, targetDx, driftSmoothLerp);
+      trackingDir.current.y = THREE.MathUtils.lerp(trackingDir.current.y, targetDz, driftSmoothLerp);
+      trackingDir.current.normalize();
+
+      const behindX = car.x - trackingDir.current.x * followDistance;
+      const behindZ = car.z - trackingDir.current.y * followDistance;
 
       const steerInput =
-        dir.steering === "left"
-          ? 0.1
-          : dir.steering === "right"
-            ? -0.1
-            : 0;
+        dir.steering === "left" ? 0.1 : dir.steering === "right" ? -0.1 : 0;
       const lookRot = car.rotation + steerInput * 0.1;
 
-      const aheadX =
-        car.x + Math.sin(lookRot) * lookAheadDistance;
-      const aheadZ =
-        car.z + Math.cos(lookRot) * lookAheadDistance;
+      const aheadX = car.x + Math.sin(lookRot) * lookAheadDistance;
+      const aheadZ = car.z + Math.cos(lookRot) * lookAheadDistance;
 
-      _targetCamPos.current.set(behindX, followHeight, behindZ);
-      _targetLookAt.current.set(aheadX, 0.3, aheadZ);
+      // Camera height follows terrain too — offset above car's actual Y
+      const camY = car.y + followHeight;
+
+      _targetCamPos.current.set(behindX, camY, behindZ);
+      _targetLookAt.current.set(aheadX, car.y + 0.3, aheadZ);
 
       if (!wasDrivingRef.current) {
         smoothedPosition.current.copy(camera.position);
@@ -168,7 +253,8 @@ function RacetrackCamera({ carPositionRef, driveDirectionRef }) {
     } else {
       const safeDelta = Math.min(delta, 0.05);
       const photoLerp = 1 - Math.exp(-3 * safeDelta);
-      _targetCenter.current.set(car.x, 0.3, car.z);
+      const carY = carPositionRef.current?.y ?? 0;
+      _targetCenter.current.set(car.x, carY + 0.3, car.z);
       smoothedTarget.current.lerp(_targetCenter.current, photoLerp);
 
       if (orbitRef.current) {
@@ -212,27 +298,33 @@ function RendererConfig() {
   return null;
 }
 
+import DriftEffects from '../Effects/DriftEffects';
+
 export default function RacetrackScene({
   carColor,
   headlightsOn,
   driveDirectionRef,
   driveMode = 'dynamic',
   carPositionRef,
+  trackId = 'drift',
 }) {
   const [colliders, setColliders] = useState([]);
+  const [terrainMeshes, setTerrainMeshes] = useState([]);
+  const isKarting = trackId === 'karting';
+  const config = TRACK_CONFIGS[trackId] || TRACK_CONFIGS.drift;
+  const terrainTuning = TRACK_TUNING[trackId] || TRACK_TUNING.drift;
 
-  // Set initial position for Racetrack
   useEffect(() => {
     if (carPositionRef) {
       carPositionRef.current = {
-        x: 20,
-        y: -0.8,
-        z: 16,
-        rotation: Math.PI * 0.5,
+        x: config.spawnPosition[0],
+        y: config.spawnPosition[1],
+        z: config.spawnPosition[2],
+        rotation: config.spawnRotation,
         speed: 0
       };
     }
-  }, [carPositionRef]);
+  }, [carPositionRef, trackId]);
 
   return (
     <>
@@ -246,11 +338,15 @@ export default function RacetrackScene({
         environmentIntensity={0.65}
       />
 
-      <TrackModel onCollidersLoaded={setColliders} />
+      <TrackModel
+        onCollidersLoaded={setColliders}
+        onTerrainLoaded={setTerrainMeshes}
+        trackId={trackId}
+      />
 
       <CarModel
-        carPosition={[20, -0.8, 16]}
-        carRotation={Math.PI * 0.5}
+        carPosition={config.spawnPosition}
+        carRotation={config.spawnRotation}
         carColor={carColor}
         headlightsOn={headlightsOn}
         freeRoamActive={true}
@@ -258,25 +354,31 @@ export default function RacetrackScene({
         driveDirectionRef={driveDirectionRef}
         carPositionRef={carPositionRef}
         trackColliders={colliders}
+        terrainMeshes={terrainMeshes}
+        terrainTuning={terrainTuning}
         driveMode={driveMode}
       />
+
+      <DriftEffects carPositionRef={carPositionRef} />
 
       <RacetrackCamera
         carPositionRef={carPositionRef}
         driveDirectionRef={driveDirectionRef}
       />
 
-      <EffectComposer disableNormalPass multisampling={4}>
-        <Bloom
-          luminanceThreshold={0.6}
-          luminanceSmoothing={0.5}
-          intensity={0.8}
-          radius={0.75}
-          mipmapBlur
-        />
-        <Vignette eskil={false} offset={0.15} darkness={0.45} />
-        <Noise premultiply opacity={0.015} />
-      </EffectComposer>
+      {!isKarting && (
+        <EffectComposer disableNormalPass multisampling={4}>
+          <Bloom
+            luminanceThreshold={0.6}
+            luminanceSmoothing={0.5}
+            intensity={0.8}
+            radius={0.75}
+            mipmapBlur
+          />
+          <Vignette eskil={false} offset={0.15} darkness={0.45} />
+          <Noise premultiply opacity={0.015} />
+        </EffectComposer>
+      )}
     </>
   );
 }

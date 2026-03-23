@@ -65,23 +65,27 @@ const LogoCircle = styled.circle`
 
 const BrandName = styled.h1`
   font-family: 'Orbitron', sans-serif;
-  font-size: 1.5rem;
+  font-size: clamp(1rem, 5vw, 1.5rem);
   color: #ffffff;
   letter-spacing: 0.3em;
   margin-bottom: 0.5rem;
   text-transform: uppercase;
+  text-align: center;
+  padding: 0 10px;
 `
 
 const ModelName = styled.p`
   font-family: 'Rajdhani', sans-serif;
-  font-size: 0.9rem;
+  font-size: clamp(0.7rem, 3.5vw, 0.9rem);
   color: rgba(255, 255, 255, 0.5);
   letter-spacing: 0.2em;
   margin-bottom: 3rem;
+  text-align: center;
+  padding: 0 10px;
 `
 
 const ProgressContainer = styled.div`
-  width: 200px;
+  width: min(80vw, 200px);
   height: 2px;
   background: rgba(255, 255, 255, 0.1);
   border-radius: 1px;

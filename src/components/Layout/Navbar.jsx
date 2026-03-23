@@ -13,6 +13,18 @@ const subtlePulse = keyframes`
   50% { opacity: 1; }
 `
 
+/* Same glow animation as AudioBar / LightStrip in InteriorSection */
+const glow = keyframes`
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+`
+
+/* Bar-rise animation — each card bar animates up on mount / hover */
+const barRise = keyframes`
+  0% { transform: scaleY(0); }
+  100% { transform: scaleY(1); }
+`
+
 /* ── Nav Shell ── */
 const Nav = styled.nav`
   position: fixed;
@@ -411,9 +423,319 @@ const MobileMenuExitButton = styled.button`
   }
 `
 
+/* ── Track Selection Modal ── */
+const ModalOverlay = styled.div`
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(12px);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: ${props => props.$isOpen ? 1 : 0};
+  pointer-events: ${props => props.$isOpen ? 'auto' : 'none'};
+  transition: opacity 0.35s ease;
+`
+
+const ModalPanel = styled.div`
+  background: linear-gradient(145deg, rgba(22, 22, 26, 0.98) 0%, rgba(10, 10, 12, 0.99) 100%);
+  border: 1px solid rgba(192, 57, 43, 0.35);
+  border-radius: 16px;
+  padding: 2.5rem;
+  max-width: 520px;
+  width: 90vw;
+  box-shadow: 0 30px 100px rgba(0, 0, 0, 0.7), 0 0 80px rgba(192, 57, 43, 0.15);
+  transform: ${props => props.$isOpen ? 'scale(1) translateY(0)' : 'scale(0.92) translateY(20px)'};
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(255,255,255,0.012) 2px, rgba(255,255,255,0.012) 4px),
+      repeating-linear-gradient(-45deg, transparent, transparent 2px, rgba(255,255,255,0.012) 2px, rgba(255,255,255,0.012) 4px);
+    pointer-events: none;
+    border-radius: inherit;
+  }
+`
+
+const ModalTitle = styled.h2`
+  font-family: 'Orbitron', sans-serif;
+  font-size: 1.1rem;
+  color: #ffffff;
+  text-align: center;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  margin-bottom: 0.5rem;
+`
+
+const ModalSubtitle = styled.p`
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 0.85rem;
+  color: rgba(255,255,255,0.5);
+  text-align: center;
+  margin-bottom: 2rem;
+`
+
+const TrackGrid = styled.div`
+  display: flex;
+  gap: 1rem;
+  @media (max-width: 500px) {
+    flex-direction: column;
+  }
+`
+
+/* ── TrackCard: styled after AudioBar / AmbientLightStrip from InteriorSection ──
+   The card mimics the visualizer aesthetic:
+   - Dark carbon-fiber housing (same as AmbientLightStrip)
+   - A mini audio-visualizer bar cluster at the bottom of each card
+   - Glowing red accent strip (same gradient + glow as LightStrip)
+   - Machined inset edges
+   - Hover amplifies the glow, mirrors FeatureCard hover behaviour
+*/
+const TrackCard = styled.button`
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+  border-radius: 12px;
+  padding: 1.5rem 1rem 1rem;
+
+  /* Same dark housing as AmbientLightStrip */
+  background: linear-gradient(
+    160deg,
+    rgba(18, 18, 20, 1) 0%,
+    rgba(8, 8, 10, 1) 100%
+  );
+  border: 1px solid rgba(192, 57, 43, 0.2);
+  box-shadow:
+    0 4px 24px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.4);
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+
+  transition: all 0.3s ease;
+
+  /* Carbon weave — same pattern as AmbientLightStrip::before */
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+      repeating-linear-gradient(
+        45deg,
+        transparent,
+        transparent 2px,
+        rgba(255, 255, 255, 0.03) 2px,
+        rgba(255, 255, 255, 0.03) 4px
+      ),
+      repeating-linear-gradient(
+        -45deg,
+        transparent,
+        transparent 2px,
+        rgba(255, 255, 255, 0.03) 2px,
+        rgba(255, 255, 255, 0.03) 4px
+      );
+    pointer-events: none;
+    border-radius: inherit;
+  }
+
+  /* Glass highlight at top edge — mirrors FeatureCard::before */
+  &::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.12) 30%,
+      rgba(255, 255, 255, 0.18) 50%,
+      rgba(255, 255, 255, 0.12) 70%,
+      transparent 100%
+    );
+    pointer-events: none;
+    border-radius: inherit;
+  }
+
+  &:hover {
+    border-color: rgba(192, 57, 43, 0.55);
+    box-shadow:
+      0 8px 40px rgba(0, 0, 0, 0.5),
+      0 0 28px rgba(192, 57, 43, 0.12),
+      inset 0 1px 0 rgba(255, 255, 255, 0.06),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.5);
+    transform: translateY(-2px);
+  }
+
+  &:active {
+    transform: scale(0.97);
+  }
+`
+
+const TrackIcon = styled.div`
+  font-size: 2.5rem;
+  line-height: 1;
+  position: relative;
+  z-index: 1;
+`
+
+const TrackName = styled.span`
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.7rem;
+  color: rgba(255,255,255,0.9);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  position: relative;
+  z-index: 1;
+`
+
+const TrackDesc = styled.span`
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 0.75rem;
+  color: rgba(255,255,255,0.45);
+  text-align: center;
+  position: relative;
+  z-index: 1;
+`
+
+/* ── Mini visualizer block — lives at the bottom of each TrackCard ──
+   Directly mirrors the AmbientLightStrip housing from InteriorSection,
+   with the glowing LightStrip bar and audio bar cluster.
+*/
+const CardVisualizer = styled.div`
+  width: 100%;
+  padding: 0.75rem 0.75rem 0.6rem;
+  background: linear-gradient(
+    160deg,
+    rgba(12, 12, 14, 1) 0%,
+    rgba(6, 6, 8, 1) 100%
+  );
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  position: relative;
+  z-index: 1;
+  overflow: hidden;
+
+  /* Machined edge — same as AmbientLightStrip::after */
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.05),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.4);
+    pointer-events: none;
+  }
+`
+
+/* Identical to LightStrip in InteriorSection */
+const CardLightStrip = styled.div`
+  height: 3px;
+  background: linear-gradient(
+    90deg,
+    #c0392b 0%,
+    #ff6b6b 25%,
+    #c0392b 50%,
+    #ff6b6b 75%,
+    #c0392b 100%
+  );
+  border-radius: 2px;
+  animation: ${glow} 2s ease-in-out infinite;
+  box-shadow:
+    0 0 20px rgba(192, 57, 43, 0.5),
+    0 0 40px rgba(192, 57, 43, 0.2);
+  margin-bottom: 0.6rem;
+`
+
+/* Container identical to AudioVisualizer in InteriorSection */
+const CardBarGroup = styled.div`
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 3px;
+  height: 24px;
+`
+
+/* Each bar mirrors AudioBar — static decorative heights, glow on hover.
+   Heights are passed as $height prop exactly like InteriorSection does it. */
+const CardBar = styled.div`
+  width: 4px;
+  height: ${props => props.$height}px;
+  background: linear-gradient(to top, rgba(192, 57, 43, 0.6), #c0392b);
+  border-radius: 2px;
+  box-shadow: 0 0 4px rgba(192, 57, 43, 0.25);
+  transform-origin: bottom;
+  animation: ${barRise} 0.6s cubic-bezier(0.4, 0, 0.2, 1) both;
+  animation-delay: ${props => props.$delay}s;
+
+  /* On card hover, bars glow more — mirrors the active visualizer feel */
+  ${TrackCard}:hover & {
+    box-shadow: 0 0 8px rgba(192, 57, 43, 0.55);
+  }
+`
+
+/* Label row — mirrors AudioLabel from InteriorSection */
+const CardBarLabel = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 0.5rem;
+
+  span {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 0.6rem;
+    color: rgba(255, 255, 255, 0.25);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+`
+
+const ModalCloseBtn = styled.button`
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 1.5rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+
+  &:hover {
+    background: rgba(192, 57, 43, 0.2);
+    border-color: rgba(192, 57, 43, 0.5);
+    color: #ffffff;
+  }
+`
+
+/* ── Static bar height profiles for each track ──
+   Drift = wild, irregular spikes (loose/chaotic).
+   Karting Club = more even, high-amplitude (sustained performance).
+   10 bars, heights in px (max 24 to fit CardBarGroup height).
+*/
+const DRIFT_BARS = [6, 18, 9, 22, 5, 20, 12, 24, 7, 15]
+const KARTING_BARS = [18, 20, 22, 16, 24, 19, 21, 17, 23, 20]
+
 export default function Navbar({ onTakeToRacetrack, inRacetrack }) {
   const [scrolled, setScrolled] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const [showTrackModal, setShowTrackModal] = useState(false)
 
   useEffect(() => {
     const handleScroll = () => {
@@ -431,73 +753,110 @@ export default function Navbar({ onTakeToRacetrack, inRacetrack }) {
     }
   }
 
+  const handleTrackSelect = (trackId) => {
+    setShowTrackModal(false)
+    onTakeToRacetrack(trackId)
+  }
+
   return (
-    <Nav $scrolled={scrolled}>
-      <Logo onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
-        <LogoIcon src={AlfaRomeoLogo} alt="Alfa Romeo" />
-        <LogoText>Alfa Romeo</LogoText>
-      </Logo>
+    <>
+      <Nav $scrolled={scrolled}>
+        <Logo onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
+          <LogoIcon src={AlfaRomeoLogo} alt="Alfa Romeo" />
+          <LogoText>Alfa Romeo</LogoText>
+        </Logo>
 
-      <NavLinks>
-        <NavLink onClick={() => scrollToSection('engine')}>Performance</NavLink>
-        <LinkSeparator />
-        <NavLink onClick={() => scrollToSection('suspension')}>Dynamics</NavLink>
-        <LinkSeparator />
-        <NavLink onClick={() => scrollToSection('interior')}>Interior</NavLink>
-        <LinkSeparator />
-        <NavLink onClick={() => scrollToSection('enginebay')}>Engine Bay</NavLink>
-        <LinkSeparator />
-        <NavLink onClick={() => scrollToSection('gallery')}>Colors</NavLink>
-        <LinkSeparator />
-        <NavLink onClick={() => scrollToSection('contact')}>Test Drive</NavLink>
-        <LinkSeparator />
-        <NavLink onClick={() => scrollToSection('footer')}>Credits</NavLink>
-        <LinkSeparator />
-        <NavLink onClick={() => scrollToSection('freeroam')}>Free Roam</NavLink>
-      </NavLinks>
+        <NavLinks>
+          <NavLink onClick={() => scrollToSection('engine')}>Performance</NavLink>
+          <LinkSeparator />
+          <NavLink onClick={() => scrollToSection('suspension')}>Dynamics</NavLink>
+          <LinkSeparator />
+          <NavLink onClick={() => scrollToSection('interior')}>Interior</NavLink>
+          <LinkSeparator />
+          <NavLink onClick={() => scrollToSection('enginebay')}>Engine Bay</NavLink>
+          <LinkSeparator />
+          <NavLink onClick={() => scrollToSection('gallery')}>Colors</NavLink>
+          <LinkSeparator />
+          <NavLink onClick={() => scrollToSection('contact')}>Test Drive</NavLink>
+          <LinkSeparator />
+          <NavLink onClick={() => scrollToSection('footer')}>Credits</NavLink>
+          <LinkSeparator />
+          <NavLink onClick={() => scrollToSection('freeroam')}>Free Roam</NavLink>
+        </NavLinks>
 
-      {inRacetrack ? (
-        <ReturnButton onClick={onTakeToRacetrack}>
-          <StatusDot $active />
-          Return to Showcase
-        </ReturnButton>
-      ) : (
-        <CTAGroup>
-          <TrackButton onClick={onTakeToRacetrack}>
-            <StatusDot />
-            Track Mode
-          </TrackButton>
-        </CTAGroup>
-      )}
-
-      <MobileMenuButton aria-label="Menu" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
-        <span />
-        <span />
-        <span />
-      </MobileMenuButton>
-
-      <MobileOverlay $isOpen={isMobileMenuOpen}>
-        <MobileMenuExitButton onClick={() => setIsMobileMenuOpen(false)}>
-          <svg viewBox="0 0 24 24">
-            <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
-          </svg>
-        </MobileMenuExitButton>
-
-        <MobileNavLink onClick={() => { scrollToSection('engine'); setIsMobileMenuOpen(false); }}>Performance</MobileNavLink>
-        <MobileNavLink onClick={() => { scrollToSection('suspension'); setIsMobileMenuOpen(false); }}>Dynamics</MobileNavLink>
-        <MobileNavLink onClick={() => { scrollToSection('interior'); setIsMobileMenuOpen(false); }}>Interior</MobileNavLink>
-        <MobileNavLink onClick={() => { scrollToSection('enginebay'); setIsMobileMenuOpen(false); }}>Engine Bay</MobileNavLink>
-        <MobileNavLink onClick={() => { scrollToSection('gallery'); setIsMobileMenuOpen(false); }}>Colors</MobileNavLink>
-        <MobileNavLink onClick={() => { scrollToSection('contact'); setIsMobileMenuOpen(false); }}>Test Drive</MobileNavLink>
-        <MobileNavLink onClick={() => { scrollToSection('footer'); setIsMobileMenuOpen(false); }}>Credits</MobileNavLink>
-        {/* Track Mode button inside mobile menu as well */}
-        {!inRacetrack && (
-          <TrackButton onClick={() => { onTakeToRacetrack(); setIsMobileMenuOpen(false); }} style={{marginTop: '1rem'}}>
-            <StatusDot />
-            Track Mode
-          </TrackButton>
+        {inRacetrack ? (
+          <ReturnButton onClick={() => onTakeToRacetrack(null)}>
+            <StatusDot $active />
+            Return to Showcase
+          </ReturnButton>
+        ) : (
+          <CTAGroup>
+            <TrackButton onClick={() => setShowTrackModal(true)}>
+              <StatusDot />
+              Track Mode
+            </TrackButton>
+          </CTAGroup>
         )}
-      </MobileOverlay>
-    </Nav>
+
+        <MobileMenuButton aria-label="Menu" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
+          <span />
+          <span />
+          <span />
+        </MobileMenuButton>
+
+        <MobileOverlay $isOpen={isMobileMenuOpen}>
+          <MobileMenuExitButton onClick={() => setIsMobileMenuOpen(false)}>
+            <svg viewBox="0 0 24 24">
+              <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+            </svg>
+          </MobileMenuExitButton>
+
+          <MobileNavLink onClick={() => { scrollToSection('engine'); setIsMobileMenuOpen(false); }}>Performance</MobileNavLink>
+          <MobileNavLink onClick={() => { scrollToSection('suspension'); setIsMobileMenuOpen(false); }}>Dynamics</MobileNavLink>
+          <MobileNavLink onClick={() => { scrollToSection('interior'); setIsMobileMenuOpen(false); }}>Interior</MobileNavLink>
+          <MobileNavLink onClick={() => { scrollToSection('enginebay'); setIsMobileMenuOpen(false); }}>Engine Bay</MobileNavLink>
+          <MobileNavLink onClick={() => { scrollToSection('gallery'); setIsMobileMenuOpen(false); }}>Colors</MobileNavLink>
+          <MobileNavLink onClick={() => { scrollToSection('contact'); setIsMobileMenuOpen(false); }}>Test Drive</MobileNavLink>
+          <MobileNavLink onClick={() => { scrollToSection('footer'); setIsMobileMenuOpen(false); }}>Credits</MobileNavLink>
+          {!inRacetrack && (
+            <TrackButton onClick={() => { setShowTrackModal(true); setIsMobileMenuOpen(false); }} style={{ marginTop: '1rem' }}>
+              <StatusDot />
+              Track Mode
+            </TrackButton>
+          )}
+        </MobileOverlay>
+      </Nav>
+
+      {/* Track Selection Modal */}
+      <ModalOverlay $isOpen={showTrackModal} onClick={() => setShowTrackModal(false)}>
+        <ModalPanel $isOpen={showTrackModal} onClick={e => e.stopPropagation()} style={{ position: 'relative' }}>
+          <ModalCloseBtn onClick={() => setShowTrackModal(false)}>✕</ModalCloseBtn>
+          <ModalTitle>Select Track</ModalTitle>
+          <ModalSubtitle>Choose your battleground</ModalSubtitle>
+
+          <TrackGrid>
+
+            {/* ── Drift Track card ── */}
+            <TrackCard onClick={() => handleTrackSelect('drift')}>
+              <TrackIcon>🏁</TrackIcon>
+              <TrackName>Drift Track</TrackName>
+              <TrackDesc>Open parking lot — perfect for drifting</TrackDesc>
+
+
+            </TrackCard>
+
+            {/* ── Karting Club card ── */}
+            <TrackCard onClick={() => handleTrackSelect('karting')}>
+              <TrackIcon>🏎️</TrackIcon>
+              <TrackName>Karting Club</TrackName>
+              <TrackDesc>Outdoor race track — precision and speed</TrackDesc>
+
+
+            </TrackCard>
+
+          </TrackGrid>
+        </ModalPanel>
+      </ModalOverlay>
+    </>
   )
 }

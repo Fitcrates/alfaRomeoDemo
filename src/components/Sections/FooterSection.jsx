@@ -180,22 +180,38 @@ export default function FooterSection({ id }) {
           </CreditSection>
 
           <CreditSection>
-            <CreditLabel>3D Model</CreditLabel>
-            <CreditLink href="https://sketchfab.com/ddiaz-design" target="_blank" rel="noopener noreferrer">
-              ddiaz-design
+            <CreditLabel>3D Car Model</CreditLabel>
+            <CreditLink href="https://skfb.ly/pFPuJ" target="_blank" rel="noopener noreferrer">
+              "2016 Alfa Romeo Giulia Quadrifoglio" by Ddiaz Design
             </CreditLink>
             <CreditText>
-              Original Alfa Romeo Giulia Quadrifoglio 3D model
+              Licensed under{' '}
+              <CreditLink href="http://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.85rem' }}>
+                CC Attribution-NonCommercial-ShareAlike 4.0
+              </CreditLink>
+            </CreditText>
+          </CreditSection>
+
+          <CreditSection>
+            <CreditLabel>3D Race Track</CreditLabel>
+            <CreditLink href="https://skfb.ly/oXNZR" target="_blank" rel="noopener noreferrer">
+              "Drift Race Track Free" by Nicholas-3D
+            </CreditLink>
+            <CreditText>
+              Licensed under{' '}
+              <CreditLink href="http://creativecommons.org/licenses/by-nd/4.0/" target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.85rem' }}>
+                CC Attribution-NoDerivs 4.0
+              </CreditLink>
             </CreditText>
           </CreditSection>
 
           <LicenseNotice>
             <LicenseTitle>Creative Commons License Notice</LicenseTitle>
             <LicenseText>
-              The 3D model used in this project is licensed under Creative Commons.
-              Modifications have been made to the original model for this interactive experience.
-              Original creator: ddiaz-design on Sketchfab. This project is a non-commercial
-              portfolio demonstration.
+              The 3D models used in this project are licensed under Creative Commons.
+              Modifications have been made to the original car model for this interactive experience.
+              Original creators: Ddiaz Design (car) and Nicholas-3D (track) on Sketchfab.
+              This project is a non-commercial portfolio demonstration.
             </LicenseText>
           </LicenseNotice>
 

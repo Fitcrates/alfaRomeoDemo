@@ -21,6 +21,7 @@
     "stats.js": "^0.17.0",
     "styled-components": "^6.3.11",
     "three": "^0.183.2",
+    "three-mesh-bvh": "^0.9.9",
     "xhr2": "^0.2.1"
   },
   "devDependencies": {

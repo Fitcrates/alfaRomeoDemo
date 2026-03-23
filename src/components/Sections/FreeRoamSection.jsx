@@ -618,10 +618,12 @@ export default function FreeRoamSection({
   onDrive,
   driveMode,
   onDriveModeChange,
+  forceActive = false,
 }) {
   const sectionRef = useRef(null)
   const [isActive, setIsActive] = useState(false)
   const [activeDirection, setActiveDirection] = useState(null)
+  const effectiveIsActive = forceActive || isActive
 
   // ═══════════════════════════════════════════════════════════════════════════
   // ENGINE SOUND SYSTEM
@@ -630,6 +632,14 @@ export default function FreeRoamSection({
   // ─────────────────────────────────────────────────────────────────────────
 
   useEffect(() => {
+    if (forceActive) {
+      setIsActive(true)
+      onFreeRoamEnter?.()
+      return () => {
+        onFreeRoamLeave?.()
+      }
+    }
+
     const section = sectionRef.current
     if (!section) return
 
@@ -646,13 +656,13 @@ export default function FreeRoamSection({
     })
 
     return () => ctx.revert()
-  }, [onFreeRoamEnter, onFreeRoamLeave])
+  }, [onFreeRoamEnter, onFreeRoamLeave, forceActive])
 
   /* Keyboard support - tracks multiple keys for combined movement */
   const keysPressed = useRef(new Set())
 
   useEffect(() => {
-    if (!isActive) return
+    if (!effectiveIsActive) return
 
     const throttleKeys = {
       ArrowUp: 'forward', w: 'forward', W: 'forward',
@@ -664,7 +674,11 @@ export default function FreeRoamSection({
     }
 
     const updateDriveState = () => {
-      if (!engineOn) return
+      if (!engineOn) {
+        setActiveDirection(null)
+        onDrive?.('combined', { throttle: null, steering: null })
+        return
+      }
 
       // Determine throttle direction (W/S or Up/Down arrows)
       let throttle = null
@@ -706,14 +720,33 @@ export default function FreeRoamSection({
       }
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // FOCUS-LOSS SAFEGUARD
+    // When the browser tab loses focus (alt-tab, OS notification, DevTools, etc.)
+    // the browser suppresses keyup events.  Without this handler the keysPressed
+    // Set stays populated and the car drives/steers indefinitely.
+    // ─────────────────────────────────────────────────────────────────────────
+    const stopAllInput = () => {
+      keysPressed.current.clear()
+      setActiveDirection(null)
+      onDrive?.('combined', { throttle: null, steering: null })
+    }
+
     window.addEventListener('keydown', onDown)
     window.addEventListener('keyup', onUp)
+    window.addEventListener('blur', stopAllInput)
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) stopAllInput()
+    })
+
     return () => {
       window.removeEventListener('keydown', onDown)
       window.removeEventListener('keyup', onUp)
-      // Preserving keysPressed.current so input isn't interrupted by re-renders
+      window.removeEventListener('blur', stopAllInput)
+      // Always flush keys on cleanup so no stale input leaks between re-renders
+      stopAllInput()
     }
-  }, [isActive, onDrive, engineOn])
+  }, [effectiveIsActive, onDrive, engineOn])
 
   const handleDriveStart = (direction) => {
     if (!engineOn) return
@@ -768,7 +801,7 @@ export default function FreeRoamSection({
   )
 
   const controlPanelContent = (
-    <ControlPanel className={isActive ? 'active' : ''}>
+    <ControlPanel className={effectiveIsActive ? 'active' : ''}>
       <ConsoleBody>
         <TopFlagStripe />
         <SectionsRow>
@@ -898,6 +931,10 @@ export default function FreeRoamSection({
                 <HintKey>S</HintKey>
                 <HintKey>D</HintKey>
               </HintRow>
+              <HintRow>
+                <HintKey>Space</HintKey>
+                <span>Handbrake</span>
+              </HintRow>
             </RotaryArea>
           </PanelSection>
 
@@ -911,7 +948,7 @@ export default function FreeRoamSection({
           </PanelSection>
         </SectionsRow>
       </ConsoleBody>
-    </ControlPanel>
+    </ControlPanel >
   )
 
   return (
