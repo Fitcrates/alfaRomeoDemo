@@ -157,14 +157,22 @@ export default function EngineSoundSystem({ engineOn, carPositionRef }) {
       const isDrifting = carPositionRef?.current?.isDrifting;
       const isBurnout = carPositionRef?.current?.isBurnout;
       const sidewaysSpeed = Math.abs(carPositionRef?.current?.sidewaysSpeed || 0);
+      const isOversteering = carPositionRef?.current?.isOversteering;
+      const isUndersteering = carPositionRef?.current?.isUndersteering;
 
-      // Drift / burnout sound modulation
+      // Drift / burnout / oversteer / understeer sound modulation
       if (driftAudioRef.current && driftAudioRef.current.readyState >= 2) {
         let targetDriftVolume = 0;
         if (isBurnout) {
           targetDriftVolume = 0.85; // High intensity tire squeal during burnout
         } else if (isDrifting && sidewaysSpeed > 1) {
           targetDriftVolume = Math.min(1.0, sidewaysSpeed * 0.08); // volume scales with slide intensity
+        } else if (isOversteering && targetSpeed > 5) {
+          // Oversteer = rear tires losing grip, sliding out
+          targetDriftVolume = Math.min(0.7, targetSpeed * 0.04);
+        } else if (isUndersteering && targetSpeed > 5) {
+          // Understeer = front tires losing grip, scrubbing
+          targetDriftVolume = Math.min(0.5, targetSpeed * 0.03);
         }
         driftAudioRef.current.volume += (targetDriftVolume - driftAudioRef.current.volume) * 0.15;
       }

@@ -32,35 +32,43 @@ const TRACK_CONFIGS = {
 
 const TRACK_TUNING = {
   drift: {
-    terrainRaycastModulo: 3,
-    collisionRaycastModulo: 3,
+    terrainRaycastModulo: 2,
+    collisionRaycastModulo: 1,    // Check every frame for solid barriers
     slopeRaycastModulo: 99,
-    maxStepUp: 4.0,
+    maxStepUp: 5.0,                // Allow large steps
     maxPitchDeg: 0,
-    minTerrainNormalY: 0.2,
+    minTerrainNormalY: 0.05,       // Very low to accept any surface
     enableSlopePitch: false,
-    maxSurfaceDeltaFromExpected: 4.0,
-    maxRisePerSecond: 10.0,
+    maxSurfaceDeltaFromExpected: 6.0, // Large tolerance
+    maxRisePerSecond: 12.0,
     maxFallPerSecond: 15.0,
     minYClamp: -100,
     maxYClamp: 100,
     disableTerrainFollow: false,
+    curbHeightThreshold: 1.0,      // High threshold
+    useMultiRayTerrain: false,
+    carRideHeight: 0.05,           // Proper ground clearance (5cm)
+    collisionDistance: 1.5,        // Distance to check for barriers
+    collisionBounce: 0.6,          // Bounce back strength (0-1)
   },
   karting: {
     terrainRaycastModulo: 2,
-    collisionRaycastModulo: 6,
+    collisionRaycastModulo: 15,
     slopeRaycastModulo: 99,
-    maxStepUp: 4.0,
+    maxStepUp: 5.0,
     maxPitchDeg: 0,
-    minTerrainNormalY: 0.2,
+    minTerrainNormalY: 0.05,
     enableSlopePitch: false,
-    maxSurfaceDeltaFromExpected: 4.0,
-    maxRisePerSecond: 15.0,
-    maxFallPerSecond: 20.0,
+    maxSurfaceDeltaFromExpected: 6.0,
+    maxRisePerSecond: 12.0,
+    maxFallPerSecond: 15.0,
     minYClamp: -100,
     maxYClamp: 100,
     disableTerrainFollow: false,
     enableHeadlightShadows: false,
+    curbHeightThreshold: 1.0,
+    useMultiRayTerrain: false,
+    carRideHeight: 0.05,           // Proper ground clearance (5cm)
   },
 };
 
@@ -363,7 +371,7 @@ export default function DriftTrackScene({
         driveMode={driveMode}
       />
 
-      <DriftEffects carPositionRef={carPositionRef} />
+      <DriftEffects carPositionRef={carPositionRef} terrainMeshes={terrainMeshes} />
 
       <RacetrackCamera
         carPositionRef={carPositionRef}

@@ -328,7 +328,6 @@ export default function ScrollExperience() {
   const [selectedTrack, setSelectedTrack] = useState('drift');
   const [hoodOpen, setHoodOpen] = useState(false);
   const [driveMode, setDriveMode] = useState('dynamic');
-  const [currentSection, setCurrentSection] = useState("hero");
 
 
   const driveDirectionRef = useRef({
@@ -391,15 +390,14 @@ export default function ScrollExperience() {
         },
       });
 
-      // Set up ScrollTriggers for each section to track currentSection
+      // ScrollTriggers are now explicitly decoupled from React state to avoid
+      // massive tree re-renders and jitter on boundary crossings!
       const sections = document.querySelectorAll("section[id]");
       sections.forEach((section) => {
         ScrollTrigger.create({
           trigger: section,
           start: "top center",
           end: "bottom center",
-          onEnter: () => setCurrentSection(section.id),
-          onEnterBack: () => setCurrentSection(section.id),
         });
       });
     });
@@ -492,9 +490,9 @@ export default function ScrollExperience() {
         >
           <Canvas
             camera={{ position: [0, 1, 8], fov: 45 }}
-            dpr={showRacetrack && selectedTrack === 'karting' ? [1, 1.25] : [1, 2]}
+            dpr={showRacetrack && selectedTrack === 'karting' ? [1, 1] : [1, 2]}
             gl={{
-              antialias: true,
+              antialias: showRacetrack && selectedTrack === 'karting' ? false : true,
               alpha: false,
               powerPreference: "high-performance",
               toneMapping: THREE.ACESFilmicToneMapping,
@@ -542,7 +540,6 @@ export default function ScrollExperience() {
                     driveDirectionRef={driveDirectionRef}
                     driveMode={driveMode}
                     carPositionRef={carPositionRef}
-                    currentSection={currentSection}
                   />
                   <DriftEffects carPositionRef={carPositionRef} />
                 </>

@@ -6,7 +6,7 @@ const _euler = new THREE.Euler();
 const _quat = new THREE.Quaternion();
 
 // ── Drift Effects ──
-export default function DriftEffects({ carPositionRef }) {
+export default function DriftEffects({ carPositionRef, terrainMeshes = [] }) {
   const maxMarks = 1000;
   const maxSmoke = 1500;
   const meshRef = useRef();
@@ -21,6 +21,11 @@ export default function DriftEffects({ carPositionRef }) {
   const smokeData = useRef(Array.from({length: maxSmoke}, () => ({ 
     active: false, life: 0, x: 0, y: 0, z: 0, scale: 0, vx: 0, vy: 0, vz: 0 
   })));
+  
+  // Raycaster for terrain height detection
+  const raycasterRef = useRef(new THREE.Raycaster());
+  const rayOrigin = useRef(new THREE.Vector3());
+  const rayDown = useRef(new THREE.Vector3(0, -1, 0));
 
   // Initialize ALL instances to zero-scale so uninitialised slots don't render
   // as a gray sphere blob at world origin (Three.js default matrix is all-zeros).
@@ -50,11 +55,23 @@ export default function DriftEffects({ carPositionRef }) {
         const worldX = x + Math.cos(rotation) * offsetX + Math.sin(rotation) * offsetZ;
         const worldZ = z - Math.sin(rotation) * offsetX + Math.cos(rotation) * offsetZ;
         
-        // skidmarks — place just above the actual terrain surface the car is on
+        // Raycast to find actual terrain height at this position
+        let markY = y - 0.04; // Default: slightly below car
+        if (terrainMeshes.length > 0) {
+          rayOrigin.current.set(worldX, y + 5, worldZ);
+          raycasterRef.current.set(rayOrigin.current, rayDown.current);
+          raycasterRef.current.far = 15;
+          const hits = raycasterRef.current.intersectObjects(terrainMeshes, false);
+          if (hits.length > 0) {
+            // Place mark 1cm above terrain to prevent z-fighting
+            markY = hits[0].point.y + 0.01;
+          }
+        }
+        // Fallback to prevent marks spawning below floor
+        markY = Math.max(markY, -0.77);
+        
         const d = dummy.current;
-        // car.y is group.position.y = surfaceY + CAR_RIDE_HEIGHT (0.05).
-        // Subtracting ~0.04 puts the mark right at surface level with 1cm z-fight margin.
-        d.position.set(worldX, y - 0.04, worldZ);
+        d.position.set(worldX, markY, worldZ);
         
         // Reset rotation completely via quaternion to guarantee flat placement
         // Step 1: Lay flat on ground (rotate -90deg around X)
@@ -89,16 +106,17 @@ export default function DriftEffects({ carPositionRef }) {
         opacityRef.current[idx] = intensity;
         countRef.current++;
 
-        // emit smoke 
+        // emit smoke - use the same terrain height we found for marks
         if (smokeRef.current && Math.random() > 0.2) {
             const smokeCount = isBurnout ? 5 : 3; // More smoke during burnout
+            const smokeBaseY = markY + 0.15; // Start smoke slightly above terrain
             for(let i=0; i<smokeCount; i++) {
                 const sIdx = smokeCountRef.current % maxSmoke;
                 const s = smokeData.current[sIdx];
                 s.active = true;
                 s.life = 1.0;
                 s.x = worldX + (Math.random() - 0.5) * 0.4;
-                s.y = y + 0.12; // start smoke at wheel-arch height above terrain
+                s.y = smokeBaseY;
                 s.z = worldZ + (Math.random() - 0.5) * 0.4;
                 s.scale = isBurnout ? (0.5 + Math.random() * 0.5) : (0.4 + Math.random() * 0.3);
                 s.vx = (Math.random() - 0.5) * (isBurnout ? 3.0 : 2.0);
@@ -164,7 +182,13 @@ export default function DriftEffects({ carPositionRef }) {
 
   return (
     <>
-        <instancedMesh ref={meshRef} args={[null, null, maxMarks]} frustumCulled={false}>
+        {/* Tire marks - render first (lower renderOrder) */}
+        <instancedMesh 
+          ref={meshRef} 
+          args={[null, null, maxMarks]} 
+          frustumCulled={false}
+          renderOrder={0}
+        >
           <planeGeometry args={[1, 1]} />
           <meshBasicMaterial 
             color={0x000000} 
@@ -175,13 +199,22 @@ export default function DriftEffects({ carPositionRef }) {
             depthWrite={false} 
           />
         </instancedMesh>
-        <instancedMesh ref={smokeRef} args={[null, null, maxSmoke]} frustumCulled={false}>
+        
+        {/* Smoke - render last (higher renderOrder) to appear on top */}
+        <instancedMesh 
+          ref={smokeRef} 
+          args={[null, null, maxSmoke]} 
+          frustumCulled={false}
+          renderOrder={100}
+        >
           <sphereGeometry args={[0.5, 6, 6]} />
           <meshBasicMaterial 
             color="#cccccc" 
             transparent 
             opacity={0.25}
             depthWrite={false}
+            depthTest={true}
+            side={THREE.FrontSide}
           />
         </instancedMesh>
     </>

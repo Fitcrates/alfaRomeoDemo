@@ -47,20 +47,23 @@ const TRACK_TUNING = {
     disableTerrainFollow: false,
   },
   karting: {
-    terrainRaycastModulo: 2,
+    terrainRaycastModulo: 1,
     collisionRaycastModulo: 6,
-    slopeRaycastModulo: 99,
-    maxStepUp: 4.0,
-    maxPitchDeg: 0,
-    minTerrainNormalY: 0.2,
-    enableSlopePitch: false,
-    maxSurfaceDeltaFromExpected: 4.0,
-    maxRisePerSecond: 15.0,
-    maxFallPerSecond: 20.0,
+    slopeRaycastModulo: 4,
+    maxStepUp: 1.0,
+    maxPitchDeg: 10,
+    minTerrainNormalY: 0.6,
+    enableSlopePitch: true,
+    maxSurfaceDeltaFromExpected: 1.5,
+    maxRisePerSecond: 8.0,
+    maxFallPerSecond: 8.0,
     minYClamp: -100,
     maxYClamp: 100,
     disableTerrainFollow: false,
     enableHeadlightShadows: false,
+    curbHeightThreshold: 0.3,
+    useMultiRayTerrain: true,
+    carRideHeight: 0.06,
   },
 };
 
@@ -80,7 +83,8 @@ function TrackModel({ onCollidersLoaded, onTerrainLoaded }) {
       scene.traverse((child) => {
         if (child.isMesh) {
           
-          child.receiveShadow = true;
+          child.receiveShadow = false;
+          child.castShadow = false;
 
           const mat = child.material;
           const name = (child.name || mat?.name || "").toLowerCase();
@@ -116,16 +120,18 @@ function TrackModel({ onCollidersLoaded, onTerrainLoaded }) {
 
             if (isRoad && !isCollider) {
               child.castShadow = false;
+              child.receiveShadow = false;
               // Remove icy reflection, make it look like dry asphalt
               mat.roughness = Math.max(mat.roughness ?? 0.8, 0.8);
               mat.metalness = Math.min(mat.metalness ?? 0.1, 0.1);
-              mat.envMapIntensity = 1.0;
+              mat.envMapIntensity = 0.5;
               mat.needsUpdate = true;
 
               terrainMeshes.push(child);
               if (!child.geometry.boundsTree) child.geometry.computeBoundsTree();
             } else {
-              child.castShadow = !isKarting;
+              child.castShadow = false;
+              child.receiveShadow = false;
               mat.envMapIntensity = Math.max(mat.envMapIntensity ?? 1, 1.2);
               mat.needsUpdate = true;
 
@@ -297,8 +303,7 @@ function RendererConfig() {
   const { gl } = useThree();
 
   useEffect(() => {
-    gl.shadowMap.enabled = true;
-    gl.shadowMap.type = THREE.PCFSoftShadowMap;
+    gl.shadowMap.enabled = false;
     gl.toneMapping = THREE.ACESFilmicToneMapping;
     gl.toneMappingExposure = 0.85;
     gl.outputColorSpace = THREE.SRGBColorSpace;
@@ -343,7 +348,7 @@ export default function KartTrackScene({
         files="/textures/HdrSkyEvening006_HDR_4K.hdr"
         background
         blur={0.0}
-        environmentIntensity={0.65}
+        environmentIntensity={0.4}
       />
 
       <TrackModel
@@ -366,7 +371,7 @@ export default function KartTrackScene({
         driveMode={driveMode}
       />
 
-      <DriftEffects carPositionRef={carPositionRef} />
+      <DriftEffects carPositionRef={carPositionRef} terrainMeshes={terrainMeshes} />
 
       <RacetrackCamera
         carPositionRef={carPositionRef}

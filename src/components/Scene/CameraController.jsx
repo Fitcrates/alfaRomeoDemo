@@ -329,7 +329,10 @@ export default function CameraController({
     const currentConfig = getConfig(currentSectionId);
     const nextConfig = getConfig(nextSectionId);
 
-    const easedProgress = smoothstep(sectionProgress);
+    // Bypassing smoothstep! GSAP scrub is already doing time-based smoothing. 
+    // smoothstep(1.0) and smoothstep(0.0) drop velocity to perfectly zero,
+    // which created violent visual stuttering / pausing precisely at section boundaries.
+    const easedProgress = sectionProgress;
 
     // FIX: Pre-extract values to avoid creating 'new THREE.Vector3' every frame (which causes Garbage Collection stutters)
     const [cx, cy, cz] = currentConfig.position;
