@@ -13,13 +13,11 @@ const subtlePulse = keyframes`
   50% { opacity: 1; }
 `
 
-/* Same glow animation as AudioBar / LightStrip in InteriorSection */
 const glow = keyframes`
   0%, 100% { opacity: 0.5; }
   50% { opacity: 1; }
 `
 
-/* Bar-rise animation — each card bar animates up on mount / hover */
 const barRise = keyframes`
   0% { transform: scaleY(0); }
   100% { transform: scaleY(1); }
@@ -38,17 +36,14 @@ const Nav = styled.nav`
   align-items: center;
   height: 64px;
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  
-  /* Carbon fiber base */
-  background:
-    linear-gradient(
-      180deg,
-      rgba(14, 14, 18, 0.97) 100%,
-      rgba(10, 10, 12, 0.94) 100%,
-      rgba(10, 10, 12, 0) 100%
-    );
 
-  /* Carbon weave texture overlay */
+  background: linear-gradient(
+    180deg,
+    rgba(14, 14, 18, 0.97) 100%,
+    rgba(10, 10, 12, 0.94) 100%,
+    rgba(10, 10, 12, 0) 100%
+  );
+
   &::before {
     content: '';
     position: absolute;
@@ -72,34 +67,33 @@ const Nav = styled.nav`
     z-index: 0;
   }
 
- /* Bottom accent line — Italian flag */
-&::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: linear-gradient(
-    90deg,
-    #009246 0%,
-    #009246 33.33%,
-    #ffffff 33.33%,
-    #ffffff 66.66%,
-    #ce2b37 66.66%,
-    #ce2b37 100%
-  );
-}
+  &::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(
+      90deg,
+      #009246 0%,
+      #009246 33.33%,
+      #ffffff 33.33%,
+      #ffffff 66.66%,
+      #ce2b37 66.66%,
+      #ce2b37 100%
+    );
+  }
 
-& > * {
-  position: relative;
-  z-index: 1;
-}
+  & > * {
+    position: relative;
+    z-index: 1;
+  }
 
-@media (max-width: 768px) {
-  padding: 0 1rem;
-  height: 56px;
-}
+  @media (max-width: 768px) {
+    padding: 0 1rem;
+    height: 56px;
+  }
 `
 
 /* ── Logo ── */
@@ -162,7 +156,6 @@ const NavLink = styled.a`
   transition: color 0.25s ease;
   white-space: nowrap;
 
-  /* Hover underline accent */
   &::after {
     content: '';
     position: absolute;
@@ -177,14 +170,12 @@ const NavLink = styled.a`
 
   &:hover {
     color: rgba(255, 255, 255, 0.95);
-
     &::after {
       width: 60%;
     }
   }
 `
 
-/* ── Vertical separator between links ── */
 const LinkSeparator = styled.span`
   width: 1px;
   height: 14px;
@@ -192,98 +183,49 @@ const LinkSeparator = styled.span`
   display: block;
 `
 
-/* ── CTA Buttons ── */
+/* ── CTA Buttons (UPDATED TO MATCH HERO/ENGINE COMPONENTS) ── */
 const CTAGroup = styled.div`
   display: flex;
   align-items: center;
-  gap: 0.6rem;
 `
 
-const CTAButton = styled.a`
+const BaseNavBtn = styled.button`
   position: relative;
-  font-family: 'Orbitron', sans-serif;
-  font-size: 0.62rem;
-  font-weight: 600;
-  color: #ffffff;
-  text-decoration: none;
-  text-transform: uppercase;
-  letter-spacing: 0.15em;
-  padding: 0.55rem 1.3rem;
-  cursor: pointer;
+  display: flex;
+  align-items: center;
   overflow: hidden;
-  border-radius: 4px;
+  border-radius: 6px;
+  padding: 0.55rem 1.3rem;
+  font-family: 'Orbitron', sans-serif;
+  font-weight: 600;
+  font-size: 0.65rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  cursor: pointer;
   transition: all 0.3s ease;
   white-space: nowrap;
 
-  /* Carbon + glass background */
-  background:
-    linear-gradient(
-      160deg,
-      rgba(22, 22, 26, 0.9) 0%,
-      rgba(12, 12, 16, 0.95) 100%
-    );
-  border: 1px solid rgba(192, 57, 43, 0.35);
-  box-shadow:
-    0 2px 12px rgba(0, 0, 0, 0.4),
-    inset 0 1px 0 rgba(255, 255, 255, 0.04);
-
-  /* Carbon fiber micro-texture */
+  /* Glass highlight at top edge */
   &::before {
     content: '';
     position: absolute;
-    inset: 0;
-    background-image:
-      repeating-linear-gradient(
-        45deg,
-        transparent,
-        transparent 1px,
-        rgba(255, 255, 255, 0.015) 1px,
-        rgba(255, 255, 255, 0.015) 2px
-      ),
-      repeating-linear-gradient(
-        -45deg,
-        transparent,
-        transparent 1px,
-        rgba(255, 255, 255, 0.015) 1px,
-        rgba(255, 255, 255, 0.015) 2px
-      );
-    pointer-events: none;
-    border-radius: inherit;
-  }
-
-  /* Top accent line */
-  &::after {
-    content: '';
-    position: absolute;
     top: 0;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 50%;
+    left: 0;
+    right: 0;
     height: 1px;
     background: linear-gradient(
       90deg,
-      transparent,
-      rgba(192, 57, 43, 0.6),
-      transparent
+      transparent 0%,
+      rgba(255, 255, 255, 0.15) 30%,
+      rgba(255, 255, 255, 0.3) 50%,
+      rgba(255, 255, 255, 0.15) 70%,
+      transparent 100%
     );
-    transition: width 0.3s ease;
-  }
-
-  &:hover {
-    border-color: rgba(192, 57, 43, 0.7);
-    box-shadow:
-      0 4px 20px rgba(192, 57, 43, 0.15),
-      0 2px 12px rgba(0, 0, 0, 0.5),
-      inset 0 1px 0 rgba(255, 255, 255, 0.06);
-    text-shadow: 0 0 8px rgba(192, 57, 43, 0.3);
-
-    &::after {
-      width: 90%;
-    }
+    pointer-events: none;
   }
 
   &:active {
-    transform: scale(0.97);
+    transform: scale(0.97) translateY(0);
   }
 
   @media (max-width: 768px) {
@@ -292,54 +234,95 @@ const CTAButton = styled.a`
   }
 `
 
-/* Track Mode variant — more visually prominent */
-const TrackButton = styled(CTAButton)`
-  background:
-    linear-gradient(
-      160deg,
-      rgba(192, 57, 43, 0.12) 0%,
-      rgba(139, 0, 0, 0.08) 100%
-    );
-  border-color: rgba(192, 57, 43, 0.45);
+/* Primary Red Styling */
+const TrackButton = styled(BaseNavBtn)`
+  background: linear-gradient(
+    135deg,
+    rgba(192, 57, 43, 0.8) 0%,
+    rgba(139, 0, 0, 0.8) 100%
+  );
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(16px);
+  box-shadow:
+    0 4px 24px rgba(0, 0, 0, 0.2),
+    0 1px 2px rgba(255, 255, 255, 0.1) inset;
 
   &:hover {
-    background:
-      linear-gradient(
-        160deg,
-        rgba(192, 57, 43, 0.22) 0%,
-        rgba(139, 0, 0, 0.15) 100%
-      );
-    border-color: rgba(192, 57, 43, 0.8);
-  }
-`
-
-/* Return variant for racetrack */
-const ReturnButton = styled(CTAButton)`
-  background: rgba(192, 57, 43, 0.15);
-
-  &::after {
     background: linear-gradient(
-      90deg,
-      transparent,
-      rgba(255, 255, 255, 0.3),
-      transparent
+      135deg,
+      rgba(231, 76, 60, 0.9) 0%,
+      rgba(169, 0, 0, 0.9) 100%
     );
+    border-color: rgba(255, 255, 255, 0.4);
+    box-shadow:
+      0 8px 32px rgba(192, 57, 43, 0.4),
+      0 0 20px rgba(192, 57, 43, 0.2),
+      0 1px 2px rgba(255, 255, 255, 0.2) inset;
+    transform: translateY(-1px);
   }
 `
 
-/* Status LED dot */
+/* Secondary Glass Styling */
+const ReturnButton = styled(BaseNavBtn)`
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.06) 0%,
+    rgba(255, 255, 255, 0.02) 50%,
+    rgba(192, 57, 43, 0.03) 100%
+  );
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(16px);
+  box-shadow:
+    0 4px 24px rgba(0, 0, 0, 0.2),
+    0 1px 2px rgba(255, 255, 255, 0.04) inset;
+
+  /* Subtle inner glow */
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: radial-gradient(
+      ellipse at 30% 0%,
+      rgba(255, 255, 255, 0.04) 0%,
+      transparent 60%
+    );
+    pointer-events: none;
+  }
+
+  &:hover {
+    background: linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.1) 0%,
+      rgba(255, 255, 255, 0.04) 50%,
+      rgba(192, 57, 43, 0.06) 100%
+    );
+    border-color: rgba(192, 57, 43, 0.3);
+    box-shadow:
+      0 8px 32px rgba(0, 0, 0, 0.3),
+      0 0 20px rgba(192, 57, 43, 0.06),
+      0 1px 2px rgba(255, 255, 255, 0.06) inset;
+    transform: translateY(-1px);
+  }
+`
+
 const StatusDot = styled.span`
   display: inline-block;
   width: 5px;
   height: 5px;
   border-radius: 50%;
-  background: ${props => props.$active ? '#c0392b' : 'rgba(255,255,255,0.15)'};
-  box-shadow: ${props => props.$active ? '0 0 6px rgba(192,57,43,0.6)' : 'none'};
-  margin-right: 0.4rem;
-  animation: ${props => props.$active ? subtlePulse : 'none'} 2s ease-in-out infinite;
+  background: ${(props) =>
+    props.$active ? '#ffffff' : 'rgba(255,255,255,0.25)'};
+  box-shadow: ${(props) =>
+    props.$active ? '0 0 6px rgba(255,255,255,0.6)' : 'none'};
+  margin-right: 0.5rem;
+  animation: ${(props) => (props.$active ? subtlePulse : 'none')} 2s ease-in-out
+    infinite;
 `
 
-/* ── Mobile Hamburger ── */
+/* ── Mobile Menu ── */
 const MobileMenuButton = styled.button`
   display: none;
   background: none;
@@ -375,10 +358,10 @@ const MobileOverlay = styled.div`
   justify-content: center;
   align-items: center;
   gap: 2rem;
-  opacity: ${props => props.$isOpen ? 1 : 0};
-  pointer-events: ${props => props.$isOpen ? 'auto' : 'none'};
+  opacity: ${(props) => (props.$isOpen ? 1 : 0)};
+  pointer-events: ${(props) => (props.$isOpen ? 'auto' : 'none')};
   transition: opacity 0.4s ease;
-  
+
   @media (min-width: 769px) {
     display: none;
   }
@@ -395,7 +378,7 @@ const MobileNavLink = styled.button`
   letter-spacing: 0.15em;
   padding: 0.5rem 1rem;
   cursor: pointer;
-  
+
   &:active {
     color: #c0392b;
     transform: scale(0.95);
@@ -423,7 +406,7 @@ const MobileMenuExitButton = styled.button`
   }
 `
 
-/* ── Track Selection Modal ── */
+/* ── Modal Elements ── */
 const ModalOverlay = styled.div`
   position: fixed;
   inset: 0;
@@ -433,28 +416,48 @@ const ModalOverlay = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
-  opacity: ${props => props.$isOpen ? 1 : 0};
-  pointer-events: ${props => props.$isOpen ? 'auto' : 'none'};
+  opacity: ${(props) => (props.$isOpen ? 1 : 0)};
+  pointer-events: ${(props) => (props.$isOpen ? 'auto' : 'none')};
   transition: opacity 0.35s ease;
 `
 
 const ModalPanel = styled.div`
-  background: linear-gradient(145deg, rgba(22, 22, 26, 0.98) 0%, rgba(10, 10, 12, 0.99) 100%);
+  background: linear-gradient(
+    145deg,
+    rgba(22, 22, 26, 0.98) 0%,
+    rgba(10, 10, 12, 0.99) 100%
+  );
   border: 1px solid rgba(192, 57, 43, 0.35);
   border-radius: 16px;
   padding: 2.5rem;
   max-width: 520px;
   width: 90vw;
-  box-shadow: 0 30px 100px rgba(0, 0, 0, 0.7), 0 0 80px rgba(192, 57, 43, 0.15);
-  transform: ${props => props.$isOpen ? 'scale(1) translateY(0)' : 'scale(0.92) translateY(20px)'};
+  box-shadow:
+    0 30px 100px rgba(0, 0, 0, 0.7),
+    0 0 80px rgba(192, 57, 43, 0.15);
+  transform: ${(props) =>
+    props.$isOpen ? 'scale(1) translateY(0)' : 'scale(0.92) translateY(20px)'};
   transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
 
   &::before {
     content: '';
     position: absolute;
     inset: 0;
-    background-image: repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(255,255,255,0.012) 2px, rgba(255,255,255,0.012) 4px),
-      repeating-linear-gradient(-45deg, transparent, transparent 2px, rgba(255,255,255,0.012) 2px, rgba(255,255,255,0.012) 4px);
+    background-image:
+      repeating-linear-gradient(
+        45deg,
+        transparent,
+        transparent 2px,
+        rgba(255, 255, 255, 0.012) 2px,
+        rgba(255, 255, 255, 0.012) 4px
+      ),
+      repeating-linear-gradient(
+        -45deg,
+        transparent,
+        transparent 2px,
+        rgba(255, 255, 255, 0.012) 2px,
+        rgba(255, 255, 255, 0.012) 4px
+      );
     pointer-events: none;
     border-radius: inherit;
   }
@@ -473,7 +476,7 @@ const ModalTitle = styled.h2`
 const ModalSubtitle = styled.p`
   font-family: 'Rajdhani', sans-serif;
   font-size: 0.85rem;
-  color: rgba(255,255,255,0.5);
+  color: rgba(255, 255, 255, 0.5);
   text-align: center;
   margin-bottom: 2rem;
 `
@@ -486,14 +489,6 @@ const TrackGrid = styled.div`
   }
 `
 
-/* ── TrackCard: styled after AudioBar / AmbientLightStrip from InteriorSection ──
-   The card mimics the visualizer aesthetic:
-   - Dark carbon-fiber housing (same as AmbientLightStrip)
-   - A mini audio-visualizer bar cluster at the bottom of each card
-   - Glowing red accent strip (same gradient + glow as LightStrip)
-   - Machined inset edges
-   - Hover amplifies the glow, mirrors FeatureCard hover behaviour
-*/
 const TrackCard = styled.button`
   flex: 1;
   position: relative;
@@ -501,8 +496,6 @@ const TrackCard = styled.button`
   cursor: pointer;
   border-radius: 12px;
   padding: 1.5rem 1rem 1rem;
-
-  /* Same dark housing as AmbientLightStrip */
   background: linear-gradient(
     160deg,
     rgba(18, 18, 20, 1) 0%,
@@ -513,15 +506,12 @@ const TrackCard = styled.button`
     0 4px 24px rgba(0, 0, 0, 0.4),
     inset 0 1px 0 rgba(255, 255, 255, 0.04),
     inset 0 -1px 0 rgba(0, 0, 0, 0.4);
-
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 0.75rem;
-
   transition: all 0.3s ease;
 
-  /* Carbon weave — same pattern as AmbientLightStrip::before */
   &::before {
     content: '';
     position: absolute;
@@ -545,7 +535,6 @@ const TrackCard = styled.button`
     border-radius: inherit;
   }
 
-  /* Glass highlight at top edge — mirrors FeatureCard::before */
   &::after {
     content: '';
     position: absolute;
@@ -590,7 +579,7 @@ const TrackIcon = styled.div`
 const TrackName = styled.span`
   font-family: 'Orbitron', sans-serif;
   font-size: 0.7rem;
-  color: rgba(255,255,255,0.9);
+  color: rgba(255, 255, 255, 0.9);
   letter-spacing: 0.1em;
   text-transform: uppercase;
   position: relative;
@@ -600,16 +589,13 @@ const TrackName = styled.span`
 const TrackDesc = styled.span`
   font-family: 'Rajdhani', sans-serif;
   font-size: 0.75rem;
-  color: rgba(255,255,255,0.45);
+  color: rgba(255, 255, 255, 0.45);
   text-align: center;
   position: relative;
   z-index: 1;
 `
 
-/* ── Mini visualizer block — lives at the bottom of each TrackCard ──
-   Directly mirrors the AmbientLightStrip housing from InteriorSection,
-   with the glowing LightStrip bar and audio bar cluster.
-*/
+/* ── Modal Card Visualizers ── */
 const CardVisualizer = styled.div`
   width: 100%;
   padding: 0.75rem 0.75rem 0.6rem;
@@ -624,7 +610,6 @@ const CardVisualizer = styled.div`
   z-index: 1;
   overflow: hidden;
 
-  /* Machined edge — same as AmbientLightStrip::after */
   &::after {
     content: '';
     position: absolute;
@@ -637,7 +622,6 @@ const CardVisualizer = styled.div`
   }
 `
 
-/* Identical to LightStrip in InteriorSection */
 const CardLightStrip = styled.div`
   height: 3px;
   background: linear-gradient(
@@ -656,7 +640,6 @@ const CardLightStrip = styled.div`
   margin-bottom: 0.6rem;
 `
 
-/* Container identical to AudioVisualizer in InteriorSection */
 const CardBarGroup = styled.div`
   display: flex;
   align-items: flex-end;
@@ -665,25 +648,21 @@ const CardBarGroup = styled.div`
   height: 24px;
 `
 
-/* Each bar mirrors AudioBar — static decorative heights, glow on hover.
-   Heights are passed as $height prop exactly like InteriorSection does it. */
 const CardBar = styled.div`
   width: 4px;
-  height: ${props => props.$height}px;
+  height: ${(props) => props.$height}px;
   background: linear-gradient(to top, rgba(192, 57, 43, 0.6), #c0392b);
   border-radius: 2px;
   box-shadow: 0 0 4px rgba(192, 57, 43, 0.25);
   transform-origin: bottom;
   animation: ${barRise} 0.6s cubic-bezier(0.4, 0, 0.2, 1) both;
-  animation-delay: ${props => props.$delay}s;
+  animation-delay: ${(props) => props.$delay}s;
 
-  /* On card hover, bars glow more — mirrors the active visualizer feel */
   ${TrackCard}:hover & {
     box-shadow: 0 0 8px rgba(192, 57, 43, 0.55);
   }
 `
 
-/* Label row — mirrors AudioLabel from InteriorSection */
 const CardBarLabel = styled.div`
   display: flex;
   align-items: center;
@@ -724,11 +703,6 @@ const ModalCloseBtn = styled.button`
   }
 `
 
-/* ── Static bar height profiles for each track ──
-   Drift = wild, irregular spikes (loose/chaotic).
-   Karting Club = more even, high-amplitude (sustained performance).
-   10 bars, heights in px (max 24 to fit CardBarGroup height).
-*/
 const DRIFT_BARS = [6, 18, 9, 22, 5, 20, 12, 24, 7, 15]
 const KARTING_BARS = [18, 20, 22, 16, 24, 19, 21, 17, 23, 20]
 
@@ -762,26 +736,37 @@ export default function Navbar({ onTakeToRacetrack, inRacetrack }) {
     <>
       <Nav $scrolled={scrolled}>
         <Logo onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
-          <LogoIcon src={AlfaRomeoLogo} alt="Alfa Romeo" />
+
           <LogoText>Alfa Romeo</LogoText>
+          <LogoIcon src={AlfaRomeoLogo} alt="Alfa Romeo" />
         </Logo>
 
         <NavLinks>
-          <NavLink onClick={() => scrollToSection('engine')}>Performance</NavLink>
+          <NavLink onClick={() => scrollToSection('engine')}>
+            Performance
+          </NavLink>
           <LinkSeparator />
-          <NavLink onClick={() => scrollToSection('suspension')}>Dynamics</NavLink>
+          <NavLink onClick={() => scrollToSection('suspension')}>
+            Dynamics
+          </NavLink>
           <LinkSeparator />
           <NavLink onClick={() => scrollToSection('interior')}>Interior</NavLink>
           <LinkSeparator />
-          <NavLink onClick={() => scrollToSection('enginebay')}>Engine Bay</NavLink>
+          <NavLink onClick={() => scrollToSection('enginebay')}>
+            Engine Bay
+          </NavLink>
           <LinkSeparator />
           <NavLink onClick={() => scrollToSection('gallery')}>Colors</NavLink>
           <LinkSeparator />
-          <NavLink onClick={() => scrollToSection('contact')}>Test Drive</NavLink>
+          <NavLink onClick={() => scrollToSection('contact')}>
+            Test Drive
+          </NavLink>
           <LinkSeparator />
           <NavLink onClick={() => scrollToSection('footer')}>Credits</NavLink>
           <LinkSeparator />
-          <NavLink onClick={() => scrollToSection('freeroam')}>Free Roam</NavLink>
+          <NavLink onClick={() => scrollToSection('freeroam')}>
+            Free Roam
+          </NavLink>
         </NavLinks>
 
         {inRacetrack ? (
@@ -798,7 +783,10 @@ export default function Navbar({ onTakeToRacetrack, inRacetrack }) {
           </CTAGroup>
         )}
 
-        <MobileMenuButton aria-label="Menu" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
+        <MobileMenuButton
+          aria-label="Menu"
+          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+        >
           <span />
           <span />
           <span />
@@ -811,15 +799,70 @@ export default function Navbar({ onTakeToRacetrack, inRacetrack }) {
             </svg>
           </MobileMenuExitButton>
 
-          <MobileNavLink onClick={() => { scrollToSection('engine'); setIsMobileMenuOpen(false); }}>Performance</MobileNavLink>
-          <MobileNavLink onClick={() => { scrollToSection('suspension'); setIsMobileMenuOpen(false); }}>Dynamics</MobileNavLink>
-          <MobileNavLink onClick={() => { scrollToSection('interior'); setIsMobileMenuOpen(false); }}>Interior</MobileNavLink>
-          <MobileNavLink onClick={() => { scrollToSection('enginebay'); setIsMobileMenuOpen(false); }}>Engine Bay</MobileNavLink>
-          <MobileNavLink onClick={() => { scrollToSection('gallery'); setIsMobileMenuOpen(false); }}>Colors</MobileNavLink>
-          <MobileNavLink onClick={() => { scrollToSection('contact'); setIsMobileMenuOpen(false); }}>Test Drive</MobileNavLink>
-          <MobileNavLink onClick={() => { scrollToSection('footer'); setIsMobileMenuOpen(false); }}>Credits</MobileNavLink>
+          <MobileNavLink
+            onClick={() => {
+              scrollToSection('engine')
+              setIsMobileMenuOpen(false)
+            }}
+          >
+            Performance
+          </MobileNavLink>
+          <MobileNavLink
+            onClick={() => {
+              scrollToSection('suspension')
+              setIsMobileMenuOpen(false)
+            }}
+          >
+            Dynamics
+          </MobileNavLink>
+          <MobileNavLink
+            onClick={() => {
+              scrollToSection('interior')
+              setIsMobileMenuOpen(false)
+            }}
+          >
+            Interior
+          </MobileNavLink>
+          <MobileNavLink
+            onClick={() => {
+              scrollToSection('enginebay')
+              setIsMobileMenuOpen(false)
+            }}
+          >
+            Engine Bay
+          </MobileNavLink>
+          <MobileNavLink
+            onClick={() => {
+              scrollToSection('gallery')
+              setIsMobileMenuOpen(false)
+            }}
+          >
+            Colors
+          </MobileNavLink>
+          <MobileNavLink
+            onClick={() => {
+              scrollToSection('contact')
+              setIsMobileMenuOpen(false)
+            }}
+          >
+            Test Drive
+          </MobileNavLink>
+          <MobileNavLink
+            onClick={() => {
+              scrollToSection('footer')
+              setIsMobileMenuOpen(false)
+            }}
+          >
+            Credits
+          </MobileNavLink>
           {!inRacetrack && (
-            <TrackButton onClick={() => { setShowTrackModal(true); setIsMobileMenuOpen(false); }} style={{ marginTop: '1rem' }}>
+            <TrackButton
+              onClick={() => {
+                setShowTrackModal(true)
+                setIsMobileMenuOpen(false)
+              }}
+              style={{ marginTop: '1rem' }}
+            >
               <StatusDot />
               Track Mode
             </TrackButton>
@@ -828,19 +871,28 @@ export default function Navbar({ onTakeToRacetrack, inRacetrack }) {
       </Nav>
 
       {/* Track Selection Modal */}
-      <ModalOverlay $isOpen={showTrackModal} onClick={() => setShowTrackModal(false)}>
-        <ModalPanel $isOpen={showTrackModal} onClick={e => e.stopPropagation()} style={{ position: 'relative' }}>
-          <ModalCloseBtn onClick={() => setShowTrackModal(false)}>✕</ModalCloseBtn>
+      <ModalOverlay
+        $isOpen={showTrackModal}
+        onClick={() => setShowTrackModal(false)}
+      >
+        <ModalPanel
+          $isOpen={showTrackModal}
+          onClick={(e) => e.stopPropagation()}
+          style={{ position: 'relative' }}
+        >
+          <ModalCloseBtn onClick={() => setShowTrackModal(false)}>
+            ✕
+          </ModalCloseBtn>
           <ModalTitle>Select Track</ModalTitle>
           <ModalSubtitle>Choose your battleground</ModalSubtitle>
 
           <TrackGrid>
-
             {/* ── Drift Track card ── */}
             <TrackCard onClick={() => handleTrackSelect('drift')}>
               <TrackIcon>🏁</TrackIcon>
               <TrackName>Drift Track</TrackName>
               <TrackDesc>Open parking lot — perfect for drifting</TrackDesc>
+
 
 
             </TrackCard>
@@ -852,8 +904,8 @@ export default function Navbar({ onTakeToRacetrack, inRacetrack }) {
               <TrackDesc>Outdoor race track — precision and speed</TrackDesc>
 
 
-            </TrackCard>
 
+            </TrackCard>
           </TrackGrid>
         </ModalPanel>
       </ModalOverlay>
